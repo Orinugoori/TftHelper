@@ -1,6 +1,13 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+}
+
+val properties = Properties().apply {
+    load(FileInputStream(rootProject.file("local.properties")))
 }
 
 android {
@@ -21,12 +28,21 @@ android {
     }
 
     buildTypes {
+        debug{
+            manifestPlaceholders["APP_ID"] = properties["ADMOB_APP_ID"] as String
+            manifestPlaceholders["AD_ID"] = "ca-app-pub-3940256099942544/1033173712" // 광고 테스트 ID
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            manifestPlaceholders["APP_ID"] = properties["ADMOB_APP_ID"] as String
+            manifestPlaceholders["AD_ID"] = properties["ADMOB_AD_ID_TEST"] as String
+
+
         }
     }
     compileOptions {
@@ -38,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.12"
@@ -50,6 +67,8 @@ android {
 }
 
 dependencies {
+    //google 광고
+    implementation ("com.google.android.gms:play-services-ads:23.6.0")
     //coil
     implementation(libs.coil.compose)
     // Core 및 Lifecycle 관련

@@ -1,5 +1,7 @@
 package com.example.tfthelper
 
+import android.app.Activity
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -18,14 +21,29 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
-
+import com.google.android.gms.ads.interstitial.InterstitialAd
 
 
 @Composable
-fun ThirdPage(modifier: Modifier = Modifier, navController: NavHostController, selectedOptions : String) {
+fun ThirdPage(
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+    selectedOptions: String,
+    adViewModel: AdViewModel
+) {
     val options = selectedOptions.split(",")
     val firstOption = options[0]
     val secondOption = options[1]
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    if (activity == null) {
+        Log.d("광고 테스트", "액티비티 없어용")
+    }else{
+        Log.d("광고 테스트","액티비티 있어용")
+    }
+
 
     Column(
         modifier
@@ -58,18 +76,38 @@ fun ThirdPage(modifier: Modifier = Modifier, navController: NavHostController, s
 
         }
 
-        val thirdProbabilities = calculateLogic.calculateThirdProbabilities(firstOption,secondOption)
+        val thirdProbabilities =
+            calculateLogic.calculateThirdProbabilities(firstOption, secondOption)
         ShowThirdAugmentProbabilities(probabilities = thirdProbabilities)
 
-        NextBtn(text = "처음으로 돌아가기", onClick = {navController.navigate("firstPage")})
+        NextBtn(
+            text = "처음으로 돌아가기",
+            onClick = {
+                if (adViewModel.interstitialAd != null && activity != null) {
+                    Log.d("광고 테스트","광고를 표시합니다.")
+                    adViewModel.interstitialAd?.show(activity)
 
+                } else {
+                    Log.d("광고 테스트","광고가 안나와용")
+                    navController.navigate("firstPage"){
+                        popUpTo("firstPage"){inclusive = true}
+                    }
+                }
+            }
+        )
+
+        adViewModel.loadInterstitialAd(activity!!){
+            navController.navigate("firstPage"){
+                popUpTo("firstPage"){ inclusive = true}
+            }
+        }
 
 
     }
 }
 
 @Composable
-fun ShowThirdAugmentProbabilities(probabilities: List<Pair<String, Int>> ) {
+fun ShowThirdAugmentProbabilities(probabilities: List<Pair<String, Int>>) {
     Column {
         Text(
             text = "세번째 증강 확률",
@@ -77,7 +115,7 @@ fun ShowThirdAugmentProbabilities(probabilities: List<Pair<String, Int>> ) {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        probabilities.forEach { (third, probability)->
+        probabilities.forEach { (third, probability) ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -103,12 +141,9 @@ fun ShowThirdAugmentProbabilities(probabilities: List<Pair<String, Int>> ) {
         }
 
 
-
     }
-    
+
 }
-
-
 
 
 @Preview(showBackground = true)
@@ -122,7 +157,11 @@ fun ThirdScreenPreview() {
         ) {
             val navController = rememberNavController()
             val selectedOptions = "프리즘,프리즘"
-            ThirdPage(navController = navController, selectedOptions = selectedOptions)
+            ThirdPage(
+                navController = navController,
+                selectedOptions = selectedOptions,
+                adViewModel = AdViewModel()
+            )
         }
     }
 }
