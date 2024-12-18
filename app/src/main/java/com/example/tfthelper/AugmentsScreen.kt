@@ -17,8 +17,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,9 +52,12 @@ import com.example.tfthelper.ui.theme.TftHelperColor
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 
-
 @Composable
-fun AugmentPage(viewModel: AugmentViewModel, modifier: Modifier = Modifier, navController: NavHostController) {
+fun AugmentPage(
+    viewModel: AugmentViewModel,
+    modifier: Modifier = Modifier,
+    navController: NavHostController
+) {
 
     var selectedTier by remember { mutableStateOf("전체") }
 
@@ -56,16 +67,42 @@ fun AugmentPage(viewModel: AugmentViewModel, modifier: Modifier = Modifier, navC
             .fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(modifier = Modifier.padding(bottom = 8.dp), text = "증강 리스트", style = TextStyle(TftHelperColor.White, fontSize = 24.sp, fontWeight = FontWeight.Bold))
 
-        val augList = listOf("전체","실버", "골드", "프리즘")
-        FilterButton(
+        val keywordList = viewModel.keywordList.collectAsState().value
+
+        Row(
+            modifier= Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                modifier = Modifier.padding(bottom = 8.dp),
+                text = "증강 리스트",
+                style = TextStyle(
+                    TftHelperColor.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            FilterSpinner(
+                optionList = keywordList,
+                onOptionSelected = { option ->
+                    viewModel.filterAugmentsByKeyword(option)
+                }
+            )
+        }
+
+
+        val augList = listOf("전체", "실버", "골드", "프리즘")
+        AugmentSelectButton(
             options = augList,
             defaultSelection = selectedTier,
-            onOptionSelected = {selected ->
+            onOptionSelected = { selected ->
                 selectedTier = selected
-                viewModel.filterAugments(selected)
-            } )
+                viewModel.filterAugmentsByTier(selected)
+            })
+
+        Spacer(modifier = Modifier.size(8.dp))
 
         ShowAugments(viewModel)
     }
@@ -73,7 +110,53 @@ fun AugmentPage(viewModel: AugmentViewModel, modifier: Modifier = Modifier, navC
 
 
 @Composable
-fun FilterButton(
+fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedKeyword by remember { mutableStateOf("전체") }
+
+    Column(
+        modifier = Modifier.wrapContentWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        OutlinedButton(
+            shape = RoundedCornerShape(5.dp),
+            onClick = { expanded = true },
+            modifier = Modifier.width(120.dp)
+        ) {
+            Row {
+                Text(selectedKeyword, color = TftHelperColor.Grey, fontSize = 14.sp)
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = TftHelperColor.Grey
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .width(120.dp)
+                .background(TftHelperColor.White) // 전체 배경색 설정
+        ) {
+            optionList.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option , style = TextStyle(fontSize = 14.sp)) },
+                    onClick = {
+                        selectedKeyword = option
+                        expanded = false
+                        onOptionSelected(option)
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun AugmentSelectButton(
     options: List<String>,
     defaultSelection: String?,
     onOptionSelected: (String) -> Unit
@@ -118,7 +201,7 @@ fun FilterButton(
                         )
                     )
 
-                    else -> Brush.linearGradient(listOf(TftHelperColor.Grey,TftHelperColor.Grey))
+                    else -> Brush.linearGradient(listOf(TftHelperColor.Grey, TftHelperColor.Grey))
                 }
 
                 else -> Brush.linearGradient(
@@ -171,20 +254,22 @@ fun ShowAugments(viewModel: AugmentViewModel = viewModel()) {
                 modifier = Modifier.padding(8.dp)
             ) {
                 Image(
-                    painter = rememberImagePainter("https://ddragon.leagueoflegends.com/cdn/13.24.1/img/tft-augment/${augment.image.full}"),
+                    painter = rememberImagePainter("https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}"),
                     contentDescription = null,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(text = augment.name, style = TextStyle(TftHelperColor.White))
-                    Text(text = augment.description ?: "설명이 없습니다." , style = TextStyle(TftHelperColor.White, fontSize = 12.sp))
+                    Text(
+                        text = augment.description,
+                        style = TextStyle(TftHelperColor.White, fontSize = 12.sp)
+                    )
                 }
             }
         }
     }
 }
-
 
 
 @Preview(showBackground = true)
