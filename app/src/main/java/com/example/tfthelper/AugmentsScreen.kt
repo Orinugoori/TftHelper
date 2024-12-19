@@ -123,7 +123,7 @@ fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
             onClick = { expanded = true },
             modifier = Modifier.width(120.dp)
         ) {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(selectedKeyword, color = TftHelperColor.Grey, fontSize = 14.sp)
                 Icon(
                     Icons.Default.ArrowDropDown,
@@ -142,7 +142,7 @@ fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
         ) {
             optionList.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option , style = TextStyle(fontSize = 14.sp)) },
+                    text = { Text(option , style = TextStyle(fontSize = 14.sp, color = TftHelperColor.Black)) },
                     onClick = {
                         selectedKeyword = option
                         expanded = false
