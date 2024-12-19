@@ -33,7 +33,7 @@ import com.google.android.gms.ads.MobileAds
 
 class MainActivity : ComponentActivity() {
 
-    private val adViewModel : AdViewModel by viewModels()
+    private val adViewModel: AdViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,8 +41,8 @@ class MainActivity : ComponentActivity() {
 
         MobileAds.initialize(this)
 
-        adViewModel.loadInterstitialAd(this){
-            Log.d("광고테스트","첫페이지로 이동해야합니다.")
+        adViewModel.loadInterstitialAd(this) {
+            Log.d("광고테스트", "첫페이지로 이동해야합니다.")
         }
 
         setContent {
@@ -51,8 +51,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-
 
 
     sealed class BottomNavItem(val title: String, val route: String, val icon: ImageVector) {

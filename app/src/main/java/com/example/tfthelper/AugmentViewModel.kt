@@ -56,7 +56,8 @@ class AugmentViewModel : ViewModel() {
     }
 
     private fun loadKeywordList(augments: List<Augment>) {
-        val keywords = augments.flatMap { it.keyword }.toSet().toMutableList().apply { add(0,"전체") }.toSet()
+        val keywords =
+            augments.flatMap { it.keyword }.toSet().toMutableList().apply { add(0, "전체") }.toSet()
         _keywordList.value = keywords
     }
 
@@ -72,7 +73,9 @@ class AugmentViewModel : ViewModel() {
 
     private fun applyFilters() {
         val filteredList = _augments.value.filter { augment ->
-            (selectedTier == "전체" || augment.tier == selectedTier) && (selectedKeyword == "전체" || augment.keyword.contains(selectedKeyword))
+            (selectedTier == "전체" || augment.tier == selectedTier) && (selectedKeyword == "전체" || augment.keyword.contains(
+                selectedKeyword
+            ))
         }
         _filteredAugments.value = filteredList
     }

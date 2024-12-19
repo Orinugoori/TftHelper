@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +51,7 @@ import coil.compose.rememberImagePainter
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.exp
 
 
 @Composable
@@ -71,7 +73,7 @@ fun AugmentPage(
         val keywordList = viewModel.keywordList.collectAsState().value
 
         Row(
-            modifier= Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -90,6 +92,7 @@ fun AugmentPage(
                     viewModel.filterAugmentsByKeyword(option)
                 }
             )
+
         }
 
 
@@ -111,47 +114,9 @@ fun AugmentPage(
 
 @Composable
 fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    var selectedKeyword by remember { mutableStateOf("전체") }
 
-    Column(
-        modifier = Modifier.wrapContentWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        OutlinedButton(
-            shape = RoundedCornerShape(5.dp),
-            onClick = { expanded = true },
-            modifier = Modifier.width(120.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(selectedKeyword, color = TftHelperColor.Grey, fontSize = 14.sp)
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = TftHelperColor.Grey
-                )
-            }
-        }
+    CustomDropdownMenu(options = optionList, onOptionSelected = onOptionSelected)
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .width(120.dp)
-                .background(TftHelperColor.White) // 전체 배경색 설정
-        ) {
-            optionList.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option , style = TextStyle(fontSize = 14.sp, color = TftHelperColor.Black)) },
-                    onClick = {
-                        selectedKeyword = option
-                        expanded = false
-                        onOptionSelected(option)
-                    }
-                )
-            }
-        }
-    }
 }
 
 

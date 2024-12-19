@@ -40,8 +40,8 @@ fun ThirdPage(
 
     if (activity == null) {
         Log.d("광고 테스트", "액티비티 없어용")
-    }else{
-        Log.d("광고 테스트","액티비티 있어용")
+    } else {
+        Log.d("광고 테스트", "액티비티 있어용")
     }
 
 
@@ -84,21 +84,21 @@ fun ThirdPage(
             text = "처음으로 돌아가기",
             onClick = {
                 if (adViewModel.interstitialAd != null && activity != null) {
-                    Log.d("광고 테스트","광고를 표시합니다.")
+                    Log.d("광고 테스트", "광고를 표시합니다.")
                     adViewModel.interstitialAd?.show(activity)
 
                 } else {
-                    Log.d("광고 테스트","광고가 안나와용")
-                    navController.navigate("firstPage"){
-                        popUpTo("firstPage"){inclusive = true}
+                    Log.d("광고 테스트", "광고가 안나와용")
+                    navController.navigate("firstPage") {
+                        popUpTo("firstPage") { inclusive = true }
                     }
                 }
             }
         )
 
-        adViewModel.loadInterstitialAd(activity!!){
-            navController.navigate("firstPage"){
-                popUpTo("firstPage"){ inclusive = true}
+        adViewModel.loadInterstitialAd(activity!!) {
+            navController.navigate("firstPage") {
+                popUpTo("firstPage") { inclusive = true }
             }
         }
 
