@@ -31,12 +31,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,7 +95,7 @@ fun AugmentPage(
 
 
         Spacer(modifier = Modifier.size(8.dp))
-        
+
         AugmentPageWithPager(viewModel =viewModel , tiers = tiers)
 
     }
@@ -105,14 +107,12 @@ fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
 
     CustomDropdownMenu(options = optionList, onOptionSelected = onOptionSelected)
 
-}
-
-@OptIn(ExperimentalPagerApi::class)
+}@OptIn(ExperimentalPagerApi::class)
 @Composable
-fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers : List<String>) {
-
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size } )
+fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers: List<String>) {
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size })
     val coroutineScope = rememberCoroutineScope()
+
     val filteredAugments by viewModel.filteredAugments.collectAsState()
 
     Column(
@@ -123,13 +123,12 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers : List<String>) {
         // AugmentSelectButton과 HorizontalPager 연동
         AugmentSelectButton(
             options = tiers,
-            pagerState= pagerState,
+            pagerState = pagerState,
             onOptionSelected = { selectedTier ->
                 val targetPage = tiers.indexOf(selectedTier)
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(targetPage)
                 }
-                viewModel.filterAugmentsByTier(selectedTier)
             }
         )
 
@@ -140,25 +139,25 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers : List<String>) {
             state = pagerState,
             modifier = Modifier.weight(1f)
         ) { page ->
-
+            // 현재 페이지에 해당하는 티어에 따른 증강 데이터 가져오기
             val currentTier = tiers[page]
-            viewModel.filterAugmentsByTier(currentTier)
 
-            if (filteredAugments.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "해당되는 증강이 없습니다.", color = TftHelperColor.White, fontSize = 16.sp)
-                }
-
-            } else {
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (filteredAugments.isEmpty()) {
+                    item {
+                        Text(
+                            text = "해당되는 증강이 없습니다.",
+                            color = TftHelperColor.White,
+                            fontSize = 16.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
                     items(filteredAugments) { augment ->
                         Row(
                             modifier = Modifier.padding(8.dp)
@@ -170,10 +169,16 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers : List<String>) {
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
-                                Text(text = augment.name, style = TextStyle(TftHelperColor.White))
+                                Text(
+                                    text = augment.name,
+                                    style = TextStyle(TftHelperColor.White)
+                                )
                                 Text(
                                     text = augment.description,
-                                    style = TextStyle(TftHelperColor.White, fontSize = 12.sp)
+                                    style = TextStyle(
+                                        TftHelperColor.White,
+                                        fontSize = 12.sp
+                                    )
                                 )
                             }
                         }
@@ -183,10 +188,9 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers : List<String>) {
         }
     }
 
-    // Pager와 AugmentSelectButton 상태 동기화
+    // Pager와 필터링 동기화
     LaunchedEffect(pagerState.currentPage) {
-        val selectedTier = tiers[pagerState.currentPage]
-        viewModel.filterAugmentsByTier(selectedTier)
+        viewModel.filterAugmentsByTier(tiers[pagerState.currentPage])
     }
 }
 
