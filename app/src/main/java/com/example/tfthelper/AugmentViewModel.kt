@@ -39,21 +39,13 @@ class AugmentViewModel : ViewModel() {
     }
 
     //증강 데이터에 증강 설명 추가
-    fun loadAugments(rawAugments: List<Augment>) {
+    private fun loadAugments(rawAugments: List<Augment>) {
         val processedAugments = processAugments(rawAugments)
         _augments.value = processedAugments
         _filteredAugments.value = processedAugments
         loadKeywordList(processedAugments)
     }
 
-    fun filterAugments(tier: String) {
-        val filteredList = if (tier == "전체") {
-            _augments.value
-        } else {
-            filterAugmentsByTier(augments.value, tier)
-        }
-        _filteredAugments.value = filteredList
-    }
 
     private fun loadKeywordList(augments: List<Augment>) {
         val keywords =
@@ -65,6 +57,7 @@ class AugmentViewModel : ViewModel() {
         selectedTier = tier
         applyFilters()
     }
+
 
     fun filterAugmentsByKeyword(keyword: String) {
         selectedKeyword = keyword
