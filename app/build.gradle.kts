@@ -12,11 +12,11 @@ val properties = Properties().apply {
 }
 
 android {
-    namespace = "com.example.tfthelper"
+    namespace = "com.orinugoori.tfthelper"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.tfthelper"
+        applicationId = "com.orinugoori.tfthelper"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

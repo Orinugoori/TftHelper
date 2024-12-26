@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:950034035428:android:c4e46a7a1c30d2adefb2f1",
+        "mobilesdk_app_id": "1:950034035428:android:11b2adee39f624b3efb2f1",
         "android_client_info": {
-          "package_name": "com.example.tfthelper"
+          "package_name": "com.orinugoori.tfthelper"
         }
       },
       "oauth_client": [],
