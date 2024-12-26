@@ -27,7 +27,7 @@ fun processAugments(
     val processedNames = mutableSetOf<String>()
 
     val filteredAugments = rawAugments.filter {augment ->
-        val safeName = augment.name ?: "No Name"
+        val safeName = augment.name
 
         val isNotDuplicate = !processedNames.contains(safeName)
         val isTierMatched = silverAugments.containsKey(safeName) || goldAugments.containsKey(safeName) || prismAugments.containsKey(safeName)
@@ -42,14 +42,14 @@ fun processAugments(
 
     val processedAugments = filteredAugments.map { augment ->
 
-        val safeName = augment.name ?: "No Name"
+        val safeName = augment.name
 
         // tier 및 설명 설정
         val tier  = when {
             silverAugments.containsKey(safeName) -> "실버"
             goldAugments.containsKey(safeName) -> "골드"
             prismAugments.containsKey(safeName) -> "프리즘"
-            else -> augment.tier ?: "Unknown"
+            else -> augment.tier
         }
 
         val (description, keyword) = when {
@@ -76,23 +76,6 @@ fun processAugments(
     return processedAugments
 }
 
-//티어 필터링
-fun filterAugmentsByTier(augments : List<Augment>, tier: String) : List<Augment>{
-    return when(tier){
-        "실버" -> augments.filter { it.tier == "실버" }
-        "골드" -> augments.filter { it.tier == "골드" }
-        "프리즘" -> augments.filter { it.tier == "프리즘" }
-        else -> augments
-    }
-}
-//
-////필터 키워드 추출
-//fun extractAllKeywords():Set<String> {
-//    return (silverAugments.values.flatMap { it.second } +
-//            goldAugments.values.flatMap { it.second } +
-//            prismAugments.values.flatMap { it.second })
-//        .toSet() // 중복 제거
-//}
 
 
 val silverAugments = mapOf(
@@ -206,7 +189,7 @@ val goldAugments = mapOf(
     "도굴꾼 I" to Pair ("먼저 탈락하는 플레이어 3명에게서 각각 완성 아이템 하나를 선택해 획득합니다.",listOf("아이템")),
     "돈벼락" to Pair ("바로 8골드를 획득합니다. 이후 매 라운드 1골드를 획득합니다.",listOf("돈")),
     "돈벼락+" to Pair ("바로 18골드를 획득합니다. 이후 매 라운드 1골드를 획득합니다.",listOf("돈")),
-    "돌연변이 발현" to Pair ("실험체가 체력을 12% 얻고 특별 칸이 제공됩니다. 특별 칸에 있는 실험체는 전투 시작 시 처치되며 이 유닛의 실험체 추가 효과는 다른 실험실 칸에 부여됩니다. 실험체 챔피언 3명을 획득합니다.",listOf("특성 전용","전투","챔피언"),),
+    "돌연변이 발현" to Pair ("실험체가 체력을 12% 얻고 특별 칸이 제공됩니다. 특별 칸에 있는 실험체는 전투 시작 시 처치되며 이 유닛의 실험체 추가 효과는 다른 실험실 칸에 부여됩니다. 실험체 챔피언 3명을 획득합니다.",listOf("특성 전용","전투","챔피언")),
     "또 다른 이상 현상" to Pair ("스테이지 4-6의 이상 현상 라운드 이후, 장착한 챔피언에게 선택한 이상 현상 효과를 복제하는 아이템을 획득합니다.",listOf("전투")),
     "로켓 컬렉션" to Pair ("포수의 로켓 피해량이 15% 증가합니다. 아군 포수가 로켓을 75발 발사할 때마다 황금 징수의 총 1개를 획득합니다. (최대 2개) 트리스타나와 우르곳을 획득합니다.",listOf("특성 전용","아이템","전투","챔피언")),
     "로켓 컬렉션+" to Pair ("포수의 로켓 피해량이 15% 증가합니다. 아군 포수가 로켓을 65발 발사할 때마다 황금 징수의 총 1개를 획득합니다. (최대 2개) 트리스타나와 우르곳을 획득합니다.",listOf("특성 전용","아이템","전투","챔피언")),
@@ -366,7 +349,7 @@ val prismAugments = mapOf(
     "아카데미 왕관" to Pair ("아카데미 상징과 무작위 후원 아이템을 획득합니다.",listOf("상징","아이템")),
     "양보다 질" to Pair ("아이템을 정확히 1개 장착한 유닛의 아이템이 찬란한 아이템으로 업그레이드됩니다. 찬란한 아이템을 장착한 유닛이 추가로 체력을 12% 얻습니다. 자석제거기 2개를 획득합니다.\n도적의 장갑은 아이템 여러 개로 간주합니다.",listOf("전투", "자석제거기")),
     "연속 타격" to Pair ("지크의 전령 1개를 획득합니다. 지크의 전령 효과를 받는 챔피언이 추가로 치명타 확률을 35% 얻습니다.",listOf("아이템","전투")),
-    "영광스러운 진화" to Pair ("적응형 투구를 획득합니다. 챔피언을 9명 업그레이드하면 빅토르와 보석 건틀릿을 획득합니다.",listOf("아이템","챔피언",)),
+    "영광스러운 진화" to Pair ("적응형 투구를 획득합니다. 챔피언을 9명 업그레이드하면 빅토르와 보석 건틀릿을 획득합니다.",listOf("아이템","챔피언")),
     "영원한 브론즈 II" to Pair ("아군이 브론즈 등급 특성당 피해 증폭을 3.5%, 내구력을 2% 얻습니다.", listOf("전투")),
     "예상된 예상 밖의 결과" to Pair ("즉시 및 다음 2번의 스테이지 시작 시 주사위를 3개 굴립니다. 주사위 눈의 총합에 따라 다양한 보상을 획득합니다.",listOf("랜덤 보상")),
     "요지부동" to Pair ("란두인의 예언 1개를 획득합니다. 란두인의 예언 사거리가 1칸 늘어나고 아이템의 효과가 60% 증가합니다.",listOf("아이템","전투")),

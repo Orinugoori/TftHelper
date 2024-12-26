@@ -9,7 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -54,8 +54,8 @@ class MainActivity : ComponentActivity() {
 
 
     sealed class BottomNavItem(val title: String, val route: String, val icon: ImageVector) {
-        object Calculator : BottomNavItem("확률 계산기", "calculator", Icons.Filled.Search)
-        object Augments : BottomNavItem("증강체 리스트", "augments", Icons.Filled.List)
+        data object Calculator : BottomNavItem("확률 계산기", "calculator", Icons.Filled.Search)
+        data object Augments : BottomNavItem("증강체 리스트", "augments", Icons.Filled.Menu)
     }
 
 
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
                     .background(TftHelperColor.Black)
             ) {
                 composable(BottomNavItem.Calculator.route) { CalculatorScreen(navController) }
-                composable(BottomNavItem.Augments.route) { AugmentScreen(navController) }
+                composable(BottomNavItem.Augments.route) { AugmentScreen() }
 
                 composable("firstPage") {
                     FirstPage(navController = navController)
@@ -153,8 +153,8 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun AugmentScreen(navController: NavHostController) {
-        AugmentPage(navController = navController, viewModel = AugmentViewModel())
+    fun AugmentScreen() {
+        AugmentPage(viewModel = AugmentViewModel())
     }
 
 

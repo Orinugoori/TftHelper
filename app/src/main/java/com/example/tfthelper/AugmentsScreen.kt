@@ -1,7 +1,6 @@
 package com.example.tfthelper
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,7 +30,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -42,24 +40,31 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import coil.compose.rememberImagePainter
+import coil.compose.AsyncImage
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
-import com.google.accompanist.pager.ExperimentalPagerApi
 import kotlinx.coroutines.launch
 
 
 @Composable
 fun AugmentPage(
     viewModel: AugmentViewModel,
-    modifier: Modifier = Modifier,
-    navController: NavHostController
+    modifier: Modifier = Modifier
 ) {
 
-    var selectedTier by remember { mutableStateOf("전체") }
     val tiers = listOf("전체","실버","골드","프리즘")
+
+
+    val keywordList = viewModel.keywordList.collectAsState()
+
+    val filteredAugments by viewModel.filteredAugments.collectAsState()
+
+    var selectedTier = viewModel.selectedTier.collectAsState().value
+    var selectedKeyword = viewModel.selectedKeyword.collectAsState().value
+
+
+
+
 
     Column(
         modifier
@@ -68,7 +73,6 @@ fun AugmentPage(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
 
-        val keywordList = viewModel.keywordList.collectAsState().value
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -84,9 +88,13 @@ fun AugmentPage(
                     fontWeight = FontWeight.Bold
                 )
             )
+
+
             FilterSpinner(
-                optionList = keywordList,
+                options = keywordList.value,
+                selectedOption = selectedKeyword,
                 onOptionSelected = { option ->
+                    selectedKeyword = option
                     viewModel.filterAugmentsByKeyword(option)
                 }
             )
@@ -96,24 +104,44 @@ fun AugmentPage(
 
         Spacer(modifier = Modifier.size(8.dp))
 
-        AugmentPageWithPager(viewModel =viewModel , tiers = tiers)
+        AugmentPageWithPager(
+            filteredAugments = filteredAugments ,
+            tiers = tiers,
+            selectedTier = selectedTier,
+            onTierSelected = { tier ->
+                selectedTier = tier
+                viewModel.filterAugmentsByTier(tier)
+        })
 
     }
 }
 
 
 @Composable
-fun FilterSpinner(optionList: Set<String>, onOptionSelected: (String) -> Unit) {
+fun FilterSpinner(options: Set<String>, selectedOption: String, onOptionSelected: (String) -> Unit) {
 
-    CustomDropdownMenu(options = optionList, onOptionSelected = onOptionSelected)
+    var expanded by remember { mutableStateOf(false) }
 
-}@OptIn(ExperimentalPagerApi::class)
+
+    CustomDropdownMenu(
+        options = options,
+        onOptionSelected = { option->
+                onOptionSelected(option)
+                expanded = false
+        },
+        expanded = expanded,
+        selectedOption = selectedOption,
+        onExpandChange = { isExpanded -> expanded = isExpanded },
+    )
+
+}
+
+
 @Composable
-fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers: List<String>) {
+fun AugmentPageWithPager(filteredAugments: List<Augment>, tiers: List<String>, selectedTier: String, onTierSelected: (String) -> Unit) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size })
     val coroutineScope = rememberCoroutineScope()
 
-    val filteredAugments by viewModel.filteredAugments.collectAsState()
 
     Column(
         modifier = Modifier
@@ -138,10 +166,7 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers: List<String>) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
-        ) { page ->
-            // 현재 페이지에 해당하는 티어에 따른 증강 데이터 가져오기
-            val currentTier = tiers[page]
-
+        ) { _->
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -162,11 +187,7 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers: List<String>) {
                         Row(
                             modifier = Modifier.padding(8.dp)
                         ) {
-                            Image(
-                                painter = rememberImagePainter("https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}"),
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp)
-                            )
+                            AsyncImage(model = "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}", contentDescription = null, modifier = Modifier.size(48.dp) )
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
@@ -190,7 +211,10 @@ fun AugmentPageWithPager(viewModel: AugmentViewModel, tiers: List<String>) {
 
     // Pager와 필터링 동기화
     LaunchedEffect(pagerState.currentPage) {
-        viewModel.filterAugmentsByTier(tiers[pagerState.currentPage])
+        val currentTier = tiers[pagerState.currentPage]
+        if (currentTier != selectedTier) {
+            onTierSelected(currentTier) // 티어 선택 변경 외부로 전달
+        }
     }
 }
 
@@ -291,8 +315,7 @@ fun AugmentScreenPreview() {
                 .fillMaxSize()
                 .background(TftHelperColor.Black)
         ) {
-            val navController = rememberNavController()
-            AugmentPage(navController = navController, viewModel = AugmentViewModel())
+            AugmentPage(viewModel = AugmentViewModel())
         }
     }
 }

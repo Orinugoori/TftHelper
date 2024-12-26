@@ -19,3 +19,15 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# 기본 Android ProGuard 설정
+-keep public class * extends android.app.Application
+-keep public class * extends androidx.lifecycle.ViewModel
+
+
+# Retrofit 및 Gson 사용 시
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.** { *; }
+-keep class retrofit2.** { *; }
+-dontwarn retrofit2.**

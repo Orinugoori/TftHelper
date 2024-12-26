@@ -21,7 +21,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
-import com.google.android.gms.ads.interstitial.InterstitialAd
 
 
 @Composable

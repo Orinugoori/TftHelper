@@ -20,7 +20,7 @@ class AdViewModel : ViewModel() {
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
-                    Log.d("광고 테스트", "광고가 잘나오고 있습니다.")
+                    Log.d("광고 테스트", "광고가 잘 나오고 있습니다.")
                     interstitialAd = ad
 
                     interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {

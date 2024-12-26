@@ -17,8 +17,11 @@ class AugmentViewModel : ViewModel() {
     val keywordList: StateFlow<Set<String>> = _keywordList
 
 
-    private var selectedTier: String = "전체"
-    private var selectedKeyword: String = "전체"
+    private val _selectedTier = MutableStateFlow("전체")
+    val selectedTier: StateFlow<String> = _selectedTier
+
+    private val _selectedKeyword = MutableStateFlow("전체")
+    val selectedKeyword: StateFlow<String> = _selectedKeyword
 
 
     init {
@@ -54,26 +57,25 @@ class AugmentViewModel : ViewModel() {
     }
 
     fun filterAugmentsByTier(tier: String) {
-        selectedTier = tier
-        applyFilters()
+        applyFilters(tier = tier)
     }
 
 
     fun filterAugmentsByKeyword(keyword: String) {
-        selectedKeyword = keyword
-        applyFilters()
+        applyFilters(keyword = keyword)
     }
 
-    private fun applyFilters() {
-        val filteredList = _augments.value.filter { augment ->
-            (selectedTier == "전체" || augment.tier == selectedTier) && (selectedKeyword == "전체" || augment.keyword.contains(
-                selectedKeyword
-            ))
+    private fun applyFilters(tier: String? = null, keyword: String? = null) {
+
+        if (tier != null) _selectedTier.value = tier
+        if (keyword != null) _selectedKeyword.value = keyword
+
+        _filteredAugments.value = _augments.value.filter { augment ->
+            (_selectedTier.value == "전체" || augment.tier == _selectedTier.value) &&
+                    (_selectedKeyword.value == "전체" || augment.keyword.contains(_selectedKeyword.value))
         }
-        _filteredAugments.value = filteredList
+
     }
-
-
 }
 
 

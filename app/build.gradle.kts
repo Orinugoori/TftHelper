@@ -33,7 +33,7 @@ android {
             manifestPlaceholders["AD_ID"] = "ca-app-pub-3940256099942544/1033173712" // 광고 테스트 ID
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -107,4 +107,5 @@ dependencies {
     // 디버그
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    debugImplementation(libs.leakcanary.android)
 }

@@ -1,5 +1,6 @@
 package com.example.tfthelper
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +59,7 @@ fun Title(modifier: Modifier = Modifier) {
 
 
 @Composable
-fun NextBtn(modifier: Modifier = Modifier, text: String, onClick: () -> Unit) {
+fun NextBtn(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier
@@ -100,16 +102,33 @@ fun ShowSelectedArg(modifier: Modifier = Modifier, isFirst: Boolean, prevSelecte
 @Composable
 fun CustomDropdownMenu(
     options: Set<String>,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
+    expanded: Boolean,
+    selectedOption: String,
+    onExpandChange: (Boolean) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var selectedOption by remember { mutableStateOf("전체") }
-    val scrollState = rememberLazyListState()
+
+    var scrollState by remember { mutableStateOf<LazyListState?>(null) }
+
+    DisposableEffect(expanded) {
+        if (expanded) {
+            scrollState = LazyListState()
+            Log.d("CustomDropdownMenu", "LazyListState created: $scrollState")
+        }
+
+        onDispose {
+            if (expanded) {
+                Log.d("CustomDropdownMenu", "LazyListState disposed: $scrollState")
+                scrollState = null // 참조 제거
+            }
+        }
+    }
+
 
     Column {
         OutlinedButton(
             shape = RoundedCornerShape(5.dp),
-            onClick = { expanded = !expanded },
+            onClick = { onExpandChange(!expanded) },
             modifier = Modifier.width(120.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
@@ -130,25 +149,24 @@ fun CustomDropdownMenu(
 
         if (expanded) {
             Popup(
-                onDismissRequest = { expanded = false }
+                onDismissRequest = { onExpandChange(false) }
             ) {
                 Box {
                     LazyColumn(
-                        state = scrollState,
+                        state = scrollState!!, // scrollState가 null일 경우 NullPointerException 방지
                         modifier = Modifier
                             .width(120.dp)
                             .heightIn(max = 400.dp)
                             .background(TftHelperColor.White)
-                            .drawVerticalScrollbar(scrollState)
+                            .drawVerticalScrollbar(scrollState ?: rememberLazyListState())
                     ) {
                         items(options.toList()) { option ->
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        selectedOption = option
-                                        expanded = false
                                         onOptionSelected(option)
+                                        onExpandChange(false)
                                     }
                                     .padding(8.dp)
                             ) {
@@ -161,6 +179,85 @@ fun CustomDropdownMenu(
         }
     }
 }
+
+
+
+//@Composable
+//fun CustomDropdownMenu(
+//    options: Set<String>,
+//    onOptionSelected: (String) -> Unit,
+//    expanded : Boolean,
+//    selectedOption : String,
+//    onExpandChange: (Boolean) -> Unit,
+//    scrollState: LazyListState = remember { LazyListState() }
+//) {
+//
+//    DisposableEffect(scrollState) {
+//        Log.d("CustomDropdownMenu", "LazyListState created: $scrollState")
+//
+//        onDispose {
+//            Log.d("CustomDropdownMenu", "LazyListState disposed: $scrollState")
+//        }
+//    }
+//
+//
+//    Column {
+//        OutlinedButton(
+//            shape = RoundedCornerShape(5.dp),
+//            onClick = { onExpandChange(!expanded) },
+//            modifier = Modifier.width(120.dp),
+//            contentPadding = PaddingValues(horizontal = 4.dp)
+//        ) {
+//            Row(verticalAlignment = Alignment.CenterVertically) {
+//                Text(
+//                    selectedOption,
+//                    fontWeight = FontWeight.SemiBold,
+//                    fontSize = 14.sp,
+//                    color = TftHelperColor.White
+//                )
+//                Icon(
+//                    Icons.Default.ArrowDropDown,
+//                    contentDescription = null,
+//                    tint = TftHelperColor.Grey
+//                )
+//            }
+//        }
+//
+//        if (expanded) {
+//            Popup(
+//                onDismissRequest = { onExpandChange(false) }
+//            ) {
+//                Box {
+//                    LazyColumn(
+//                        state = scrollState,
+//                        modifier = Modifier
+//                            .width(120.dp)
+//                            .heightIn(max = 400.dp)
+//                            .background(TftHelperColor.White)
+//                            .drawVerticalScrollbar(scrollState)
+//                    ) {
+//                        items(options.toList()) { option ->
+//                            Box(
+//                                modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .clickable {
+//                                        onOptionSelected(option)
+//                                        onExpandChange(false)
+//                                    }
+//                                    .padding(8.dp)
+//                            ) {
+//                                Text(option, color = TftHelperColor.Black)
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+//
+
+
 
 fun Modifier.drawVerticalScrollbar(scrollState: LazyListState): Modifier {
     return this.drawWithContent {

@@ -13,8 +13,8 @@ val Pink40 = Color(0xFF7D5260)
 @JvmInline
 value class TftHelperColor private constructor(val color: Color){
     companion object{
-        val Main = Color(0xFF5C79AF)
-        val Secondary = Color(0xFF0E2F6B)
+//        val Main = Color(0xFF5C79AF)
+//        val Secondary = Color(0xFF0E2F6B)
         val White = Color(0xFFFFFFFF)
         val Black = Color(0xFF000000)
         val Grey = Color(0xFF9E9E9E)
