@@ -43,6 +43,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import com.example.tfthelper.ui.theme.TftHelperColor
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+
+
+
+// 상태바 숨기기
+@Composable
+fun HideStatusBarScreen() {
+    val systemUiController = rememberSystemUiController()
+
+    systemUiController.isStatusBarVisible = false
+}
+
 
 @Composable
 fun Title(modifier: Modifier = Modifier) {

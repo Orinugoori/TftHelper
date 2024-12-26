@@ -76,6 +76,13 @@ dependencies {
 
     //coil
     implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+
+    //Glide
+    implementation(libs.glide)
+    implementation(libs.landscapist.glide)
+    
+
     // Core 및 Lifecycle 관련
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -98,6 +105,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
+    implementation(libs.accompanist.systemuicontroller)
     // Navigation
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)

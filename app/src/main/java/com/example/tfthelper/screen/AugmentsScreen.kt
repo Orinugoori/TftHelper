@@ -57,15 +57,12 @@ fun AugmentPage(
 
     val tiers = listOf("전체","실버","골드","프리즘")
 
-
     val keywordList = viewModel.keywordList.collectAsState()
 
     val filteredAugments by viewModel.filteredAugments.collectAsState()
 
     var selectedTier = viewModel.selectedTier.collectAsState().value
     var selectedKeyword = viewModel.selectedKeyword.collectAsState().value
-
-
 
 
 
