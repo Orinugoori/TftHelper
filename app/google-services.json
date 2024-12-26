@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "950034035428",
+    "project_id": "tfthelper-a31f3",
+    "storage_bucket": "tfthelper-a31f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:950034035428:android:c4e46a7a1c30d2adefb2f1",
+        "android_client_info": {
+          "package_name": "com.example.tfthelper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAK9pG2v1O13lioXSaB2Ob6s4Pgp2ArPSg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-package com.example.tfthelper
+package com.example.tfthelper.screen
 
 import android.app.Activity
 import android.util.Log
@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -19,6 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.example.tfthelper.AdViewModel
+import com.example.tfthelper.CaculateProbabilities
+import com.example.tfthelper.NextBtn
+import com.example.tfthelper.ShowSelectedArg
+import com.example.tfthelper.Title
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
 
@@ -36,6 +45,8 @@ fun ThirdPage(
 
     val context = LocalContext.current
     val activity = context as? Activity
+
+    var showError by remember { mutableStateOf(false) }
 
     if (activity == null) {
         Log.d("광고 테스트", "액티비티 없어용")
@@ -81,6 +92,8 @@ fun ThirdPage(
 
         NextBtn(
             text = "처음으로 돌아가기",
+            errorText = "",
+            showError= showError,
             onClick = {
                 if (adViewModel.interstitialAd != null && activity != null) {
                     Log.d("광고 테스트", "광고를 표시합니다.")
@@ -146,6 +159,12 @@ fun ShowThirdAugmentProbabilities(probabilities: List<Pair<String, Int>>) {
 
 
 @Preview(showBackground = true)
+@Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
+@Preview(name = "Large Device", widthDp = 600, heightDp = 960)
+@Preview(
+    name = "Galaxy Flip Preview",
+    device = "spec:shape=Normal,width=1080,height=2636,unit=px,dpi=420"
+)
 @Composable
 fun ThirdScreenPreview() {
     TFThelperTheme {

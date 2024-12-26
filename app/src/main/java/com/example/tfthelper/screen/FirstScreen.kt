@@ -1,4 +1,4 @@
-package com.example.tfthelper
+package com.example.tfthelper.screen
 
 
 import androidx.compose.foundation.BorderStroke
@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,16 +32,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.example.tfthelper.NextBtn
+import com.example.tfthelper.Title
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
-
 @Composable
 fun FirstPage(modifier: Modifier = Modifier, navController: NavHostController) {
 
     var firstAug by remember { mutableStateOf<String?>(null) }
     var secondAug by remember { mutableStateOf<String?>(null) }
+
     var showError by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
 
     Column(
@@ -62,15 +62,17 @@ fun FirstPage(modifier: Modifier = Modifier, navController: NavHostController) {
 
         NextBtn(
             text = "다음",
+            errorText = "첫번째 증강을 선택해 주세요",
+            showError = showError,
             onClick = {
                 when {
-                    firstAug != null && secondAug != null -> {
+                    !firstAug.isNullOrEmpty() && !secondAug.isNullOrEmpty() -> {
                         // 첫 번째와 두 번째 모두 선택 → ThirdPage로 이동
                         val selectedOptions = "$firstAug,$secondAug"
                         navController.navigate("thirdPage/$selectedOptions")
                     }
 
-                    firstAug != null -> {
+                    !firstAug.isNullOrEmpty() -> {
                         // 첫 번째만 선택 → SecondPage로 이동
                         navController.navigate("secondPage/$firstAug")
                     }
@@ -78,24 +80,20 @@ fun FirstPage(modifier: Modifier = Modifier, navController: NavHostController) {
                     else -> {
                         // 첫 번째 증강이 선택되지 않았을 때 에러 메시지 표시
                         showError = true
+
                     }
 
                 }
             }
         )
-
     }
 
-    if(showError){
-        Text(
-            text = "첫번째 증강을 선택해 주세요"
-        )
-    }
+
 }
 
 
 @Composable
-fun SelectCurrentArg(isFirst: Boolean, onOptionSelected: (String) -> Unit) {
+fun SelectCurrentArg(isFirst: Boolean, onOptionSelected: (String?) -> Unit) {
     Column {
         //증강 순서 표시
         Text(
@@ -118,7 +116,7 @@ fun SelectCurrentArg(isFirst: Boolean, onOptionSelected: (String) -> Unit) {
 fun ToggleBtn(
     options: List<String>,
     defaultSelection: String?,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String?) -> Unit
 ) {
     var selectedOption by remember { mutableStateOf(defaultSelection) }
 
@@ -180,7 +178,7 @@ fun ToggleBtn(
                     .fillMaxHeight()
                     .clickable {
                         selectedOption = if (selectedOption == option) null else option
-                        onOptionSelected(selectedOption ?: "")
+                        onOptionSelected(selectedOption)
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -204,6 +202,13 @@ fun ToggleBtn(
 
 
 @Preview(showBackground = true)
+@Preview(name = "Small Device", widthDp = 320, heightDp = 480)
+@Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
+@Preview(name = "Large Device", widthDp = 600, heightDp = 960)
+@Preview(
+    name = "Galaxy Flip Preview",
+    device = "spec:shape=Normal,width=1080,height=2636,unit=px,dpi=420"
+)
 @Composable
 fun FirstScreenPreview() {
     TFThelperTheme {

@@ -4,6 +4,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    id("com.google.gms.google-services")
 }
 
 val properties = Properties().apply {
@@ -12,11 +13,11 @@ val properties = Properties().apply {
 
 android {
     namespace = "com.example.tfthelper"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.tfthelper"
-        minSdk = 31
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -66,9 +67,13 @@ android {
     }
 }
 
+
 dependencies {
-    //google 광고
-    implementation ("com.google.android.gms:play-services-ads:23.6.0")
+    //google
+    implementation (libs.play.services.ads)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+
     //coil
     implementation(libs.coil.compose)
     // Core 및 Lifecycle 관련
@@ -109,3 +114,4 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     debugImplementation(libs.leakcanary.android)
 }
+

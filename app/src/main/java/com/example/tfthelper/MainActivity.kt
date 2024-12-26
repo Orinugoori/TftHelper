@@ -27,6 +27,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.tfthelper.screen.AugmentPage
+import com.example.tfthelper.screen.FirstPage
+import com.example.tfthelper.screen.SecondPage
+import com.example.tfthelper.screen.ThirdPage
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
 import com.google.android.gms.ads.MobileAds

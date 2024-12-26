@@ -19,6 +19,7 @@ value class TftHelperColor private constructor(val color: Color){
         val Black = Color(0xFF000000)
         val Grey = Color(0xFF9E9E9E)
         val LightGrey = Color(0xFFEBEBEB)
+        val Red = Color(0xFFC94242)
 
 
         val SilverGradient1 = Color(0xFFF1F1F1)

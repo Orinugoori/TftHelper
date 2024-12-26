@@ -1,4 +1,4 @@
-package com.example.tfthelper
+package com.example.tfthelper.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.tfthelper.CaculateProbabilities
+import com.example.tfthelper.NextBtn
+import com.example.tfthelper.ShowSelectedArg
+import com.example.tfthelper.Title
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
 
@@ -86,6 +90,8 @@ fun SecondPage(
 
         NextBtn(
             text = "다음",
+            errorText = "두번째 증강을 선택해 주세요",
+            showError= showError,
             onClick = {
                 if(secondAug != null){
                     val selectedOptions = "$firstAug,$secondAug"
@@ -236,6 +242,12 @@ fun ShowSecondThirdAugProbabilities(probabilities: List<Triple<String, String, I
 
 
 @Preview(showBackground = true)
+@Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
+@Preview(name = "Large Device", widthDp = 600, heightDp = 960)
+@Preview(
+    name = "Galaxy Flip Preview",
+    device = "spec:shape=Normal,width=1080,height=2636,unit=px,dpi=420"
+)
 @Composable
 fun SecondScreenPreview() {
     TFThelperTheme {

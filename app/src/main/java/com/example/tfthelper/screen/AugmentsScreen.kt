@@ -1,4 +1,4 @@
-package com.example.tfthelper
+package com.example.tfthelper.screen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -41,6 +41,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.tfthelper.Augment
+import com.example.tfthelper.AugmentViewModel
+import com.example.tfthelper.CustomDropdownMenu
 import com.example.tfthelper.ui.theme.TFThelperTheme
 import com.example.tfthelper.ui.theme.TftHelperColor
 import kotlinx.coroutines.launch
@@ -307,6 +310,12 @@ fun AugmentSelectButton(
 
 
 @Preview(showBackground = true)
+@Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
+@Preview(name = "Large Device", widthDp = 600, heightDp = 960)
+@Preview(
+    name = "Galaxy Flip Preview",
+    device = "spec:shape=Normal,width=1080,height=2636,unit=px,dpi=420"
+)
 @Composable
 fun AugmentScreenPreview() {
     TFThelperTheme {

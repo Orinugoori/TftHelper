@@ -59,17 +59,21 @@ fun Title(modifier: Modifier = Modifier) {
 
 
 @Composable
-fun NextBtn(text: String, onClick: () -> Unit) {
+fun NextBtn(text: String, errorText: String?, showError: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp),
         shape = RectangleShape,
-        colors = ButtonDefaults.buttonColors(TftHelperColor.White),
-        border = BorderStroke(1.dp, color = TftHelperColor.White)
+        colors = ButtonDefaults.buttonColors(
+            if (showError) TftHelperColor.Red else TftHelperColor.White
+        )
     ) {
-        Text(text = text, color = TftHelperColor.Black)
+        Text(
+            text = if (showError) errorText ?: text else text,
+            color = TftHelperColor.Black
+        )
     }
 }
 
@@ -181,7 +185,6 @@ fun CustomDropdownMenu(
 }
 
 
-
 //@Composable
 //fun CustomDropdownMenu(
 //    options: Set<String>,
@@ -256,7 +259,6 @@ fun CustomDropdownMenu(
 //    }
 //}
 //
-
 
 
 fun Modifier.drawVerticalScrollbar(scrollState: LazyListState): Modifier {
