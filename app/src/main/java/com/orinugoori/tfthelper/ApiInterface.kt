@@ -13,7 +13,6 @@ interface TFTApiService {
     suspend fun getAugments(): AugmentResponse
 }
 
-
 // Retrofit 설정
 object RetrofitInstance {
 

@@ -19,7 +19,7 @@ android {
         applicationId = "com.orinugoori.tfthelper"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -34,15 +34,14 @@ android {
             manifestPlaceholders["AD_ID"] = "ca-app-pub-3940256099942544/1033173712" // 광고 테스트 ID
         }
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
 
             manifestPlaceholders["APP_ID"] = properties["ADMOB_APP_ID"] as String
-            manifestPlaceholders["AD_ID"] = properties["ADMOB_AD_ID_TEST"] as String
-
+            manifestPlaceholders["AD_ID"] = properties["ADMOB_AD_ID"] as String
 
         }
     }

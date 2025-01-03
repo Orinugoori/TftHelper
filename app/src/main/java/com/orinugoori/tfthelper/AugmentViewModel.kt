@@ -1,7 +1,9 @@
 package com.orinugoori.tfthelper
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -33,10 +35,21 @@ class AugmentViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val response = RetrofitInstance.api.getAugments()
+
+                Log.d("API Response", "Augments : ${response.data}")
+
+                val gson = Gson()
+                val jsonResponse = gson.toJson(response)
+                Log.d("Gson Debug", "Json Response: $jsonResponse")
+
+                val augmentResponse = gson.fromJson(jsonResponse, AugmentResponse::class.java)
+                Log.d("Gson Debug", "Parsed Augments: $augmentResponse")
+
                 val rawAugments = response.data.values.toList()
                 loadAugments(rawAugments)
             } catch (e: Exception) {
                 e.printStackTrace()
+                Log.e("API Error", "Failed to fetch or parse response", e)
             }
         }
     }
