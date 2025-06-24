@@ -20,7 +20,6 @@ class AugmentRepository(private val context: Context) {
         private const val KEY_CACHED_VERSION = "cached_version"
         private const val KEY_CACHE_TIMESTAMP = "cache_timestamp"
         private const val CACHE_DURATION_MS = 24 * 60 * 60 * 1000L // 24시간
-        private const val DEFAULT_VERSION = "15.1.1" // 기본 버전 (TFT 시즌 15)
     }
 
     /**
@@ -56,18 +55,21 @@ class AugmentRepository(private val context: Context) {
     suspend fun fetchAugmentsFromServer(): List<Augment> = withContext(Dispatchers.IO) {
         try {
             // 1. 최신 버전 정보 가져오기
-            val currentVersion = getCurrentGameVersion()
-            Log.d("AugmentRepository", "현재 게임 버전: $currentVersion")
+            Log.d("AugmentRepository", "최신 버전 정보 가져오는 중...")
+            val versions = api.getVersions()
+            val latestVersion = versions.firstOrNull() ?: "15.1.1"
             
-            // 2. Data Dragon에서 증강 데이터 가져오기
-            Log.d("AugmentRepository", "Data Dragon에서 증강 데이터 가져오는 중...")
-            val augmentResponse = api.getAugments(currentVersion)
+            Log.d("AugmentRepository", "최신 버전: $latestVersion")
             
-            // 3. 데이터 처리 및 정리
-            val processedAugments = augmentResponse.processAugments()
+            // 2. 해당 버전의 TFT 증강 데이터 가져오기
+            Log.d("AugmentRepository", "TFT 증강 데이터 가져오는 중... (버전: $latestVersion)")
+            val response = api.getAugments(latestVersion)
+            
+            // 3. 데이터 처리 (티어 추출 및 설명 정리)
+            val processedAugments = processAugmentData(response)
             
             // 4. 캐시에 저장
-            cacheAugments(processedAugments, currentVersion)
+            cacheAugments(processedAugments, latestVersion)
             
             Log.d("AugmentRepository", "Data Dragon에서 ${processedAugments.size}개 증강 데이터 로드 완료")
             
@@ -79,21 +81,6 @@ class AugmentRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e("AugmentRepository", "서버 데이터 가져오기 실패", e)
             throw e
-        }
-    }
-
-    /**
-     * 현재 게임 버전 가져오기
-     */
-    private suspend fun getCurrentGameVersion(): String {
-        return try {
-            val versions = api.getVersions()
-            val latestVersion = versions.firstOrNull() ?: DEFAULT_VERSION
-            Log.d("AugmentRepository", "최신 버전: $latestVersion")
-            latestVersion
-        } catch (e: Exception) {
-            Log.e("AugmentRepository", "버전 정보 가져오기 실패, 기본 버전 사용: $DEFAULT_VERSION", e)
-            DEFAULT_VERSION
         }
     }
 
@@ -147,15 +134,23 @@ class AugmentRepository(private val context: Context) {
      * 현재 사용 중인 버전 가져오기
      */
     fun getCurrentVersion(): String {
-        return prefs.getString(KEY_CACHED_VERSION, DEFAULT_VERSION) ?: DEFAULT_VERSION
+        return prefs.getString(KEY_CACHED_VERSION, "15.1.1") ?: "15.1.1"
     }
 
     /**
-     * 증강 이미지 URL 생성
+     * 최신 버전과 현재 캐시된 버전 비교하여 업데이트 필요 여부 확인
      */
-    fun getAugmentImageUrl(imageName: String, version: String? = null): String {
-        val currentVersion = version ?: getCurrentVersion()
-        return "https://ddragon.leagueoflegends.com/cdn/$currentVersion/img/tft-augment/$imageName"
+    suspend fun checkForUpdates(): Boolean {
+        return try {
+            val versions = api.getVersions()
+            val latestVersion = versions.firstOrNull() ?: return false
+            val cachedVersion = getCurrentVersion()
+            
+            latestVersion != cachedVersion
+        } catch (e: Exception) {
+            Log.e("AugmentRepository", "업데이트 확인 실패", e)
+            false
+        }
     }
 }
 
@@ -167,4 +162,3 @@ data class CacheInfo(
     val timestamp: Long,
     val isExpired: Boolean
 )
-
