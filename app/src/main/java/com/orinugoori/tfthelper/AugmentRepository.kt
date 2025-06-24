@@ -14,13 +14,13 @@ class AugmentRepository(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("augment_cache", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val api = RetrofitInstance.api
-    private val dataDragonApi = RetrofitInstance.dataDragonApi
     
     companion object {
         private const val KEY_CACHED_AUGMENTS = "cached_augments"
         private const val KEY_CACHED_VERSION = "cached_version"
         private const val KEY_CACHE_TIMESTAMP = "cache_timestamp"
         private const val CACHE_DURATION_MS = 24 * 60 * 60 * 1000L // 24시간
+        private const val DEFAULT_VERSION = "15.1.1" // 기본 버전 (TFT 시즌 15)
     }
 
     /**
@@ -51,25 +51,27 @@ class AugmentRepository(private val context: Context) {
     }
 
     /**
-     * 서버에서 최신 증강 데이터 가져오기 (Community Dragon 사용)
+     * 서버에서 최신 증강 데이터 가져오기 (Data Dragon 사용)
      */
     suspend fun fetchAugmentsFromServer(): List<Augment> = withContext(Dispatchers.IO) {
         try {
-            // 1. Community Dragon에서 증강 데이터 가져오기 (설명 포함)
-            Log.d("AugmentRepository", "Community Dragon에서 증강 데이터 가져오는 중...")
-            val communityResponse = api.getAugments()
-            val augmentResponse = communityResponse.toAugmentResponse()
-            val augments = augmentResponse.data.values.toList()
+            // 1. 최신 버전 정보 가져오기
+            val currentVersion = getCurrentGameVersion()
+            Log.d("AugmentRepository", "현재 게임 버전: $currentVersion")
             
-            // 2. 현재 버전 정보는 Data Dragon에서 가져오기 (호환성 유지)
-            val currentVersion = getCurrentDataDragonVersion()
+            // 2. Data Dragon에서 증강 데이터 가져오기
+            Log.d("AugmentRepository", "Data Dragon에서 증강 데이터 가져오는 중...")
+            val augmentResponse = api.getAugments(currentVersion)
             
-            // 3. 캐시에 저장
-            cacheAugments(augments, currentVersion)
+            // 3. 데이터 처리 및 정리
+            val processedAugments = augmentResponse.processAugments()
             
-            Log.d("AugmentRepository", "Community Dragon에서 ${augments.size}개 증강 데이터 로드 완료")
+            // 4. 캐시에 저장
+            cacheAugments(processedAugments, currentVersion)
             
-            augments
+            Log.d("AugmentRepository", "Data Dragon에서 ${processedAugments.size}개 증강 데이터 로드 완료")
+            
+            processedAugments
             
         } catch (e: IOException) {
             Log.e("AugmentRepository", "네트워크 오류", e)
@@ -81,16 +83,17 @@ class AugmentRepository(private val context: Context) {
     }
 
     /**
-     * Data Dragon에서 버전 정보 가져오기 (기존 호환성을 위해)
+     * 현재 게임 버전 가져오기
      */
-    private suspend fun getCurrentDataDragonVersion(): String {
+    private suspend fun getCurrentGameVersion(): String {
         return try {
-            // Data Dragon API는 별도 인스턴스에서 버전 정보 가져오기
-            // Community Dragon은 항상 최신이므로 현재 게임 버전으로 설정
-            "15.1.1" // 임시로 고정, 필요시 Data Dragon API 호출 가능
+            val versions = api.getVersions()
+            val latestVersion = versions.firstOrNull() ?: DEFAULT_VERSION
+            Log.d("AugmentRepository", "최신 버전: $latestVersion")
+            latestVersion
         } catch (e: Exception) {
-            Log.e("AugmentRepository", "버전 정보 가져오기 실패", e)
-            "15.1.1" // 기본값
+            Log.e("AugmentRepository", "버전 정보 가져오기 실패, 기본 버전 사용: $DEFAULT_VERSION", e)
+            DEFAULT_VERSION
         }
     }
 
@@ -106,7 +109,7 @@ class AugmentRepository(private val context: Context) {
                 .putLong(KEY_CACHE_TIMESTAMP, System.currentTimeMillis())
                 .apply()
             
-            Log.d("AugmentRepository", "캐시 저장 완료 - 버전: $version")
+            Log.d("AugmentRepository", "캐시 저장 완료 - 버전: $version, 증강 수: ${augments.size}")
         } catch (e: Exception) {
             Log.e("AugmentRepository", "캐시 저장 실패", e)
         }
@@ -144,7 +147,15 @@ class AugmentRepository(private val context: Context) {
      * 현재 사용 중인 버전 가져오기
      */
     fun getCurrentVersion(): String {
-        return prefs.getString(KEY_CACHED_VERSION, "15.1.1") ?: "15.1.1"
+        return prefs.getString(KEY_CACHED_VERSION, DEFAULT_VERSION) ?: DEFAULT_VERSION
+    }
+
+    /**
+     * 증강 이미지 URL 생성
+     */
+    fun getAugmentImageUrl(imageName: String, version: String? = null): String {
+        val currentVersion = version ?: getCurrentVersion()
+        return "https://ddragon.leagueoflegends.com/cdn/$currentVersion/img/tft-augment/$imageName"
     }
 }
 
@@ -156,3 +167,4 @@ data class CacheInfo(
     val timestamp: Long,
     val isExpired: Boolean
 )
+
