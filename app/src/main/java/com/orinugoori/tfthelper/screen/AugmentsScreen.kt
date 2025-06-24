@@ -7,8 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -50,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
@@ -65,7 +62,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.orinugoori.tfthelper.Augment
 import com.orinugoori.tfthelper.AugmentViewModel
-import com.orinugoori.tfthelper.CustomDropdownMenu
 import com.orinugoori.tfthelper.ImageInfo
 import com.orinugoori.tfthelper.ui.theme.TFThelperTheme
 import com.orinugoori.tfthelper.ui.theme.TftHelperColor
@@ -78,10 +74,8 @@ fun AugmentPage(
     modifier: Modifier = Modifier
 ) {
     val tiers = listOf("전체","실버","골드","프리즘")
-    val keywordList = viewModel.keywordList.collectAsState()
     val filteredAugments by viewModel.filteredAugments.collectAsState()
     var selectedTier = viewModel.selectedTier.collectAsState().value
-    var selectedKeyword = viewModel.selectedKeyword.collectAsState().value
     var isSearchMode by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -103,7 +97,7 @@ fun AugmentPage(
                         value = searchText,
                         onValueChange = {
                             searchText = it
-                            // 실시간 검색 (원하면 주석 해제)
+                            // 실시간 검색
                             viewModel.searchAugments(it)
                         },
                         textStyle = TextStyle(
@@ -156,8 +150,7 @@ fun AugmentPage(
                             isSearchMode = false
                             searchText = ""
                             keyboardController?.hide()
-                            // 검색 초기화 (원하면 추가)
-                            // viewModel.clearSearch()
+                            viewModel.clearSearch()
                         }
                     ) {
                         Icon(
@@ -167,18 +160,7 @@ fun AugmentPage(
                         )
                     }
                 } else {
-                    // 일반 모드일 때 필터와 검색 버튼
-                    FilterSpinner(
-                        options = keywordList.value,
-                        selectedOption = selectedKeyword,
-                        onOptionSelected = { option ->
-                            selectedKeyword = option
-                            viewModel.filterAugmentsByKeyword(option)
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
+                    // 일반 모드일 때 검색 버튼만 표시
                     IconButton(
                         onClick = { isSearchMode = true }
                     ) {
@@ -208,26 +190,6 @@ fun AugmentPage(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
-}
-
-@Composable
-fun FilterSpinner(
-    options: Set<String>,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    CustomDropdownMenu(
-        options = options,
-        onOptionSelected = { option ->
-            onOptionSelected(option)
-            expanded = false
-        },
-        expanded = expanded,
-        selectedOption = selectedOption,
-        onExpandChange = { isExpanded -> expanded = isExpanded },
-    )
 }
 
 @Composable
@@ -302,7 +264,6 @@ fun AugmentPageWithPager(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AugmentCard(
     augment: Augment,
@@ -389,7 +350,7 @@ fun AugmentCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 증강 설명
+                // 증강 설명 (API에서 제공하는 원본 설명만 표시)
                 Text(
                     text = augment.description,
                     style = TextStyle(
@@ -398,48 +359,8 @@ fun AugmentCard(
                         lineHeight = 18.sp
                     )
                 )
-
-                // 키워드 표시
-                if (augment.keyword.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        augment.keyword.forEach { keyword ->
-                            KeywordChip(keyword = keyword)
-                        }
-                    }
-                }
             }
         }
-    }
-}
-
-@Composable
-fun KeywordChip(keyword: String) {
-    Box(
-        modifier = Modifier
-            .background(
-                color = TftHelperColor.White.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = TftHelperColor.White.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = keyword,
-            style = TextStyle(
-                color = TftHelperColor.White.copy(alpha = 0.9f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
-        )
     }
 }
 
@@ -517,4 +438,3 @@ fun AugmentSelectButton(
         }
     }
 }
-
