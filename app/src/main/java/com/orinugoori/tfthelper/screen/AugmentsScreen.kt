@@ -85,6 +85,9 @@ fun AugmentPage(
     var isSearchMode by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // 현재 버전 정보 가져오기
+    val currentVersion = viewModel.getCurrentVersion()
 
     Column(
         modifier = modifier
@@ -137,8 +140,12 @@ fun AugmentPage(
                         }
                     )
                 } else {
-                    // 일반 모드 - 빈 타이틀
-                    Text("")
+                    // 일반 모드 - 버전 정보 표시
+                    Text(
+                        text = "v$currentVersion",
+                        color = TftHelperColor.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
                 }
             },
             actions = {
@@ -193,6 +200,7 @@ fun AugmentPage(
             filteredAugments = filteredAugments,
             tiers = tiers,
             selectedTier = selectedTier,
+            currentVersion = currentVersion,
             onTierSelected = { tier ->
                 selectedTier = tier
                 viewModel.filterAugmentsByTier(tier)
@@ -227,6 +235,7 @@ fun AugmentPageWithPager(
     filteredAugments: List<Augment>,
     tiers: List<String>,
     selectedTier: String,
+    currentVersion: String,
     onTierSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -274,7 +283,10 @@ fun AugmentPageWithPager(
                     }
                 } else {
                     items(filteredAugments) { augment ->
-                        AugmentCard(augment = augment)
+                        AugmentCard(
+                            augment = augment,
+                            currentVersion = currentVersion
+                        )
                     }
                 }
             }
@@ -292,7 +304,10 @@ fun AugmentPageWithPager(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AugmentCard(augment: Augment) {
+fun AugmentCard(
+    augment: Augment,
+    currentVersion: String
+) {
     // 티어별 그라디언트 테두리 색상 정의
     val borderBrush = when (augment.tier) {
         "실버" -> Brush.linearGradient(
@@ -346,9 +361,9 @@ fun AugmentCard(augment: Augment) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 증강 이미지
+            // 증강 이미지 - 동적 버전 사용
             AsyncImage(
-                model = "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}",
+                model = "https://ddragon.leagueoflegends.com/cdn/$currentVersion/img/tft-augment/${augment.image.full}",
                 contentDescription = augment.name,
                 modifier = Modifier
                     .size(64.dp)
@@ -502,3 +517,4 @@ fun AugmentSelectButton(
         }
     }
 }
+
