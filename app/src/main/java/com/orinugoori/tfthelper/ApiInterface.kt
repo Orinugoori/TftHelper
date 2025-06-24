@@ -35,20 +35,26 @@ data class ImageInfo(
 )
 
 /**
- * 이미지 파일명을 기반으로 증강체 티어를 추출하는 함수
- * TFT 증강체는 이미지 파일명 끝의 숫자로 티어를 구분함
+ * 증강체 이름을 기반으로 티어를 정확히 분류하는 함수
+ * TFT 증강체는 이름의 패턴으로 티어를 구분함
  */
-fun extractTierFromImageName(imageName: String): String {
+fun extractTierFromAugmentName(name: String): String {
+    val cleanName = name.trim()
+    
     return when {
-        // 파일명이 3으로 끝나면 프리즘
-        imageName.matches(Regex(".*3\\.(png|jpg|jpeg)$")) -> "프리즘"
-        // 파일명이 2로 끝나면 골드
-        imageName.matches(Regex(".*2\\.(png|jpg|jpeg)$")) -> "골드"
-        // 파일명이 1로 끝나거나 숫자가 없으면 실버
-        imageName.matches(Regex(".*1\\.(png|jpg|jpeg)$")) ||
-        !imageName.matches(Regex(".*[0-9]\\.(png|jpg|jpeg)$")) -> "실버"
-        // 기타 경우 실버로 기본 설정
-        else -> "실버"
+        // 프리즘 티어 패턴들
+        cleanName.endsWith(" III") -> "프리즘"
+        cleanName.endsWith(" Crown") -> "프리즘" 
+        cleanName.endsWith(" Heart") -> "프리즘"
+        cleanName.endsWith(" Soul") -> "프리즘"
+        
+        // 골드 티어 패턴들
+        cleanName.endsWith(" II") -> "골드"
+        cleanName.endsWith(" Crest") -> "골드"
+        
+        // 실버 티어 패턴들 (기본값)
+        cleanName.endsWith(" I") -> "실버"
+        else -> "실버" // 숫자나 접미사가 없으면 실버
     }
 }
 
@@ -57,7 +63,7 @@ fun extractTierFromImageName(imageName: String): String {
  */
 fun processAugmentData(response: AugmentResponse): List<Augment> {
     return response.data.values.map { augment ->
-        val tier = extractTierFromImageName(augment.image.full)
+        val tier = extractTierFromAugmentName(augment.name)
         val cleanedDescription = cleanHtmlTags(augment.description)
         
         augment.copy(
