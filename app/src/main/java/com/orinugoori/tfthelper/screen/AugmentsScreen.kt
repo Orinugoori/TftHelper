@@ -131,9 +131,9 @@ fun AugmentPage(
                         }
                     )
                 } else {
-                    // 일반 모드 - 버전 정보 표시
+                    // 일반 모드 - Community Dragon 표시
                     Text(
-                        text = "v$currentVersion",
+                        text = "Community Dragon",
                         color = TftHelperColor.White.copy(alpha = 0.7f),
                         fontSize = 14.sp
                     )
@@ -179,7 +179,6 @@ fun AugmentPage(
             filteredAugments = filteredAugments,
             tiers = tiers,
             selectedTier = selectedTier,
-            currentVersion = currentVersion,
             onTierSelected = { tier ->
                 selectedTier = tier
                 viewModel.filterAugmentsByTier(tier)
@@ -194,7 +193,6 @@ fun AugmentPageWithPager(
     filteredAugments: List<Augment>,
     tiers: List<String>,
     selectedTier: String,
-    currentVersion: String,
     onTierSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -242,10 +240,7 @@ fun AugmentPageWithPager(
                     }
                 } else {
                     items(filteredAugments) { augment ->
-                        AugmentCard(
-                            augment = augment,
-                            currentVersion = currentVersion
-                        )
+                        AugmentCard(augment = augment)
                     }
                 }
             }
@@ -262,10 +257,7 @@ fun AugmentPageWithPager(
 }
 
 @Composable
-fun AugmentCard(
-    augment: Augment,
-    currentVersion: String
-) {
+fun AugmentCard(augment: Augment) {
     // 티어별 그라디언트 테두리 색상 정의
     val borderBrush = when (augment.tier) {
         "실버" -> Brush.linearGradient(
@@ -319,9 +311,9 @@ fun AugmentCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 증강 이미지 - 동적 버전 사용
+            // 증강 이미지 - Community Dragon 이미지 URL 사용
             AsyncImage(
-                model = "https://ddragon.leagueoflegends.com/cdn/$currentVersion/img/tft-augment/${augment.image.full}",
+                model = "https://raw.communitydragon.org/latest/game/assets/ux/tft/augmenticons/${augment.image.full}",
                 contentDescription = augment.name,
                 modifier = Modifier
                     .size(64.dp)
@@ -347,15 +339,17 @@ fun AugmentCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 증강 설명 (API에서 제공하는 원본 설명만 표시)
-                Text(
-                    text = augment.description,
-                    style = TextStyle(
-                        color = TftHelperColor.White.copy(alpha = 0.8f),
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp
+                // 증강 설명 (Community Dragon에서 제공하는 설명)
+                if (augment.description.isNotEmpty()) {
+                    Text(
+                        text = augment.description,
+                        style = TextStyle(
+                            color = TftHelperColor.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp
+                        )
                     )
-                )
+                }
             }
         }
     }
