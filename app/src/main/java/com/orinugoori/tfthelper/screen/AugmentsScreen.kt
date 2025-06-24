@@ -131,9 +131,9 @@ fun AugmentPage(
                         }
                     )
                 } else {
-                    // 일반 모드 - Community Dragon 표시
+                    // 일반 모드 - Data Dragon 표시
                     Text(
-                        text = "Community Dragon",
+                        text = "Data Dragon (v$currentVersion)",
                         color = TftHelperColor.White.copy(alpha = 0.7f),
                         fontSize = 14.sp
                     )
@@ -183,6 +183,7 @@ fun AugmentPage(
                 selectedTier = tier
                 viewModel.filterAugmentsByTier(tier)
             },
+            currentVersion = currentVersion,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
@@ -194,6 +195,7 @@ fun AugmentPageWithPager(
     tiers: List<String>,
     selectedTier: String,
     onTierSelected: (String) -> Unit,
+    currentVersion: String,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size })
@@ -240,7 +242,10 @@ fun AugmentPageWithPager(
                     }
                 } else {
                     items(filteredAugments) { augment ->
-                        AugmentCard(augment = augment)
+                        AugmentCard(
+                            augment = augment,
+                            currentVersion = currentVersion
+                        )
                     }
                 }
             }
@@ -257,7 +262,10 @@ fun AugmentPageWithPager(
 }
 
 @Composable
-fun AugmentCard(augment: Augment) {
+fun AugmentCard(
+    augment: Augment,
+    currentVersion: String
+) {
     // 티어별 그라디언트 테두리 색상 정의
     val borderBrush = when (augment.tier) {
         "실버" -> Brush.linearGradient(
@@ -311,9 +319,9 @@ fun AugmentCard(augment: Augment) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 증강 이미지 - Community Dragon 이미지 URL 사용
+            // 증강 이미지 - 올바른 Data Dragon URL 사용
             AsyncImage(
-                model = "https://raw.communitydragon.org/latest/game/assets/ux/tft/augmenticons/${augment.image.full}",
+                model = "https://ddragon.leagueoflegends.com/cdn/$currentVersion/img/tft-augment/${augment.image.full}",
                 contentDescription = augment.name,
                 modifier = Modifier
                     .size(64.dp)
@@ -327,26 +335,61 @@ fun AugmentCard(augment: Augment) {
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // 증강 이름
-                Text(
-                    text = augment.name,
-                    style = TextStyle(
-                        color = TftHelperColor.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                // 증강 이름과 티어 표시
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = augment.name,
+                        style = TextStyle(
+                            color = TftHelperColor.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier.weight(1f)
                     )
-                )
+                    
+                    // 티어 배지
+                    val tierColor = when (augment.tier) {
+                        "실버" -> TftHelperColor.SilverGradient3
+                        "골드" -> TftHelperColor.GoldGradient3
+                        "프리즘" -> TftHelperColor.PrismGradient3
+                        else -> TftHelperColor.Grey
+                    }
+                    
+                    Text(
+                        text = augment.tier,
+                        style = TextStyle(
+                            color = TftHelperColor.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier
+                            .background(tierColor, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // 증강 설명 (Community Dragon에서 제공하는 설명)
-                if (augment.description.isNotEmpty()) {
+                // 증강 설명 (정리된 설명)
+                if (augment.description.isNotEmpty() && augment.description != "설명이 없습니다.") {
                     Text(
                         text = augment.description,
                         style = TextStyle(
                             color = TftHelperColor.White.copy(alpha = 0.8f),
                             fontSize = 14.sp,
                             lineHeight = 18.sp
+                        )
+                    )
+                } else {
+                    Text(
+                        text = "설명이 제공되지 않습니다.",
+                        style = TextStyle(
+                            color = TftHelperColor.White.copy(alpha = 0.5f),
+                            fontSize = 14.sp
                         )
                     )
                 }
