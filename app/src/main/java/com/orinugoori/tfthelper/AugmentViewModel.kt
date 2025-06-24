@@ -169,13 +169,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
         applyFilters()
     }
 
-    /**
-     * 검색 초기화
-     */
-    fun clearSearch() {
-        _searchQuery.value = ""
-        applyFilters()
-    }
 
     /**
      * 모든 필터 초기화
@@ -240,6 +233,24 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
             counts[tier] = (counts[tier] ?: 0) + 1
         }
         return counts
+    }
+
+    // 검색 기능
+    fun searchAugments(query: String) {
+        // 증강 이름이나 설명에서 검색어 포함하는 항목 필터링
+        viewModelScope.launch {
+            val searchResults = _augments.value.filter { augment ->
+                augment.name.contains(query, ignoreCase = true) ||
+                        augment.description.contains(query, ignoreCase = true) ||
+                        augment.keyword.any { keyword -> keyword.contains(query, ignoreCase = true) }
+            }
+            _filteredAugments.value = searchResults
+        }
+    }
+
+    // 검색 초기화 (선택사항)
+    fun clearSearch() {
+        _filteredAugments.value = _augments.value
     }
 
     // ===== 기존 코드와의 호환성 유지 =====
