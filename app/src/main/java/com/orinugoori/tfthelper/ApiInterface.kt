@@ -1,5 +1,6 @@
 package com.orinugoori.tfthelper
 
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -8,117 +9,93 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface TFTApiService {
-    // Community Dragon에서 TFT 증강 데이터 가져오기 (한국어)
-    @GET("latest/cdragon/tft/ko_kr.json")
-    suspend fun getAugments(): CommunityDragonResponse
+    // Data Dragon에서 TFT 증강 데이터 가져오기 (한국어)
+    @GET("cdn/{version}/data/ko_KR/tft-augments.json")
+    suspend fun getAugments(@Path("version") version: String): AugmentResponse
 
-    // 버전 정보는 Data Dragon에서 가져오기 (호환성 유지)
+    // 최신 버전 정보 가져오기
     @GET("api/versions.json")
     suspend fun getVersions(): List<String>
 }
 
-// Community Dragon 응답 데이터 구조
-data class CommunityDragonResponse(
-    val sets: Map<String, TftSet>
-)
-
-data class TftSet(
-    val name: String,
-    val augments: List<CommunityDragonAugment>?
-)
-
-data class CommunityDragonAugment(
-    val apiName: String,
-    val name: String,
-    val desc: String,
-    val icon: String
-)
-
-// 기존 호환성을 위한 변환 함수들
-fun CommunityDragonResponse.toAugmentResponse(): AugmentResponse {
-    val augments = mutableMapOf<String, Augment>()
+// HTML 정리 및 설명 처리 함수들
+fun cleanAugmentDescription(description: String): String {
+    if (description.isBlank()) return "설명이 없습니다."
     
-    // 모든 세트에서 증강 데이터 추출
-    sets.values.forEach { set ->
-        set.augments?.forEach { cdAugment ->
-            augments[cdAugment.apiName] = Augment(
-                id = cdAugment.apiName,
-                name = cdAugment.name,
-                description = cdAugment.desc,
-                tier = extractTierFromApiName(cdAugment.apiName),
-                image = ImageInfo(
-                    full = cdAugment.icon.substringAfterLast('/')
-                )
-            )
-        }
-    }
+    var cleaned = description
     
-    return AugmentResponse(data = augments)
+    // HTML 태그 제거 (모든 태그 포함)
+    cleaned = cleaned.replace(Regex("<[^>]*>"), "")
+    
+    // 특수 문자 및 플레이스홀더 제거
+    cleaned = cleaned.replace(Regex("@[^@]*@"), "")
+    cleaned = cleaned.replace(Regex("%[^%]*%"), "")
+    cleaned = cleaned.replace("&nbsp;", " ")
+    cleaned = cleaned.replace("&lt;", "<")
+    cleaned = cleaned.replace("&gt;", ">")
+    cleaned = cleaned.replace("&amp;", "&")
+    cleaned = cleaned.replace("&quot;", "\"")
+    cleaned = cleaned.replace("&#39;", "'")
+    
+    // 연속된 공백을 하나로 통합
+    cleaned = cleaned.replace(Regex("\\s+"), " ")
+    
+    // 앞뒤 공백 제거
+    cleaned = cleaned.trim()
+    
+    return if (cleaned.isBlank()) "설명이 없습니다." else cleaned
 }
 
-// API 이름에서 티어 추출 (기존 로직 유지)
-private fun extractTierFromApiName(apiName: String): String {
+// API 응답에서 티어 추출 (ID 기반)
+fun extractTierFromId(id: String): String {
+    val lowerId = id.lowercase()
+    
     return when {
-        apiName.contains("III", ignoreCase = true) || 
-        apiName.contains("_3_") -> "프리즘"
-        apiName.contains("II", ignoreCase = true) || 
-        apiName.contains("_2_") -> "골드"
+        // 프리즘 티어 패턴
+        lowerId.contains("iii") || 
+        lowerId.contains("_3_") ||
+        lowerId.contains("prismatic") ||
+        lowerId.contains("legend") -> "프리즘"
+        
+        // 골드 티어 패턴  
+        lowerId.contains("ii") || 
+        lowerId.contains("_2_") ||
+        lowerId.contains("gold") ||
+        lowerId.contains("rare") -> "골드"
+        
+        // 실버 티어 (기본값)
         else -> "실버"
     }
 }
 
-// 향후 확장을 위한 추가 엔드포인트들 (Data Dragon 사용)
-interface DataDragonApiService {
-    @GET("cdn/{version}/data/ko_KR/tft-champion.json")
-    suspend fun getChampions(@Path("version") version: String): ChampionResponse
-
-    @GET("cdn/{version}/data/ko_KR/tft-trait.json")
-    suspend fun getTraits(@Path("version") version: String): TraitResponse
-
-    @GET("cdn/{version}/data/ko_KR/tft-item.json")
-    suspend fun getItems(@Path("version") version: String): ItemResponse
+// 증강 이름 정규화
+fun normalizeAugmentName(name: String): String {
+    return name.trim()
+        .replace(Regex("\\s+"), " ")
+        .replace("'", "'")
+        .replace("'", "'")
+        .replace(""", "\"")
+        .replace(""", "\"")
 }
 
-// 새로운 응답 데이터 클래스들 (향후 확장용)
-data class ChampionResponse(
-    val data: Map<String, Champion>
-)
+// Data Dragon 응답을 앱에서 사용하는 형태로 변환
+fun AugmentResponse.processAugments(): List<Augment> {
+    return this.data.values.map { augment ->
+        val cleanedName = normalizeAugmentName(augment.name)
+        val tier = extractTierFromId(augment.id)
+        val cleanedDescription = cleanAugmentDescription(augment.description ?: "")
+        
+        augment.copy(
+            name = cleanedName,
+            tier = tier,
+            description = cleanedDescription
+        )
+    }.sortedBy { it.name }
+}
 
-data class TraitResponse(
-    val data: Map<String, Trait>
-)
-
-data class ItemResponse(
-    val data: Map<String, Item>
-)
-
-// 향후 확장을 위한 데이터 클래스들
-data class Champion(
-    val id: String,
-    val name: String,
-    val tier: Int,
-    val image: ImageInfo
-)
-
-data class Trait(
-    val id: String,
-    val name: String,
-    val description: String
-)
-
-data class Item(
-    val id: String,
-    val name: String,
-    val image: ImageInfo
-)
-
-// Retrofit 설정 - Community Dragon과 Data Dragon 분리
+// Retrofit 설정
 object RetrofitInstance {
-    // Community Dragon - TFT 증강 데이터용
-    private const val COMMUNITY_DRAGON_BASE_URL = "https://raw.communitydragon.org/"
-    
-    // Data Dragon - 버전 정보 및 기타 데이터용
-    private const val DATA_DRAGON_BASE_URL = "https://ddragon.leagueoflegends.com/"
+    private const val BASE_URL = "https://ddragon.leagueoflegends.com/"
 
     private val interceptor = HttpLoggingInterceptor().apply {
         level = if (BuildConfig.DEBUG) {
@@ -134,23 +111,13 @@ object RetrofitInstance {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    // Community Dragon API (증강 데이터)
     val api: TFTApiService by lazy {
         Retrofit.Builder()
-            .baseUrl(COMMUNITY_DRAGON_BASE_URL)
+            .baseUrl(BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(TFTApiService::class.java)
     }
-
-    // Data Dragon API (버전 정보)
-    val dataDragonApi: DataDragonApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(DATA_DRAGON_BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(DataDragonApiService::class.java)
-    }
 }
+
