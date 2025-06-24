@@ -56,14 +56,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.orinugoori.tfthelper.Augment
 import com.orinugoori.tfthelper.AugmentViewModel
-import com.orinugoori.tfthelper.ImageInfo
-import com.orinugoori.tfthelper.ui.theme.TFThelperTheme
 import com.orinugoori.tfthelper.ui.theme.TftHelperColor
 import kotlinx.coroutines.launch
 
