@@ -14,6 +14,7 @@ class AugmentRepository(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("augment_cache", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val api = RetrofitInstance.api
+    private val dataDragonApi = RetrofitInstance.dataDragonApi
     
     companion object {
         private const val KEY_CACHED_AUGMENTS = "cached_augments"
@@ -50,24 +51,23 @@ class AugmentRepository(private val context: Context) {
     }
 
     /**
-     * 서버에서 최신 증강 데이터 가져오기
+     * 서버에서 최신 증강 데이터 가져오기 (Community Dragon 사용)
      */
     suspend fun fetchAugmentsFromServer(): List<Augment> = withContext(Dispatchers.IO) {
         try {
-            // 1. 최신 버전 가져오기
-            val versions = api.getVersions()
-            val latestVersion = versions.firstOrNull() ?: throw Exception("버전 정보를 가져올 수 없습니다")
+            // 1. Community Dragon에서 증강 데이터 가져오기 (설명 포함)
+            Log.d("AugmentRepository", "Community Dragon에서 증강 데이터 가져오는 중...")
+            val communityResponse = api.getAugments()
+            val augmentResponse = communityResponse.toAugmentResponse()
+            val augments = augmentResponse.data.values.toList()
             
-            Log.d("AugmentRepository", "최신 버전: $latestVersion")
+            // 2. 현재 버전 정보는 Data Dragon에서 가져오기 (호환성 유지)
+            val currentVersion = getCurrentDataDragonVersion()
             
-            // 2. 최신 버전으로 증강 데이터 가져오기
-            val response = api.getAugments(latestVersion)
-            val augments = response.data.values.toList()
+            // 3. 캐시에 저장
+            cacheAugments(augments, currentVersion)
             
-            // 3. 캐시에 저장 (더 이상 처리하지 않고 바로 저장)
-            cacheAugments(augments, latestVersion)
-            
-            Log.d("AugmentRepository", "서버에서 ${augments.size}개 증강 데이터 로드 완료")
+            Log.d("AugmentRepository", "Community Dragon에서 ${augments.size}개 증강 데이터 로드 완료")
             
             augments
             
@@ -77,6 +77,20 @@ class AugmentRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e("AugmentRepository", "서버 데이터 가져오기 실패", e)
             throw e
+        }
+    }
+
+    /**
+     * Data Dragon에서 버전 정보 가져오기 (기존 호환성을 위해)
+     */
+    private suspend fun getCurrentDataDragonVersion(): String {
+        return try {
+            // Data Dragon API는 별도 인스턴스에서 버전 정보 가져오기
+            // Community Dragon은 항상 최신이므로 현재 게임 버전으로 설정
+            "15.1.1" // 임시로 고정, 필요시 Data Dragon API 호출 가능
+        } catch (e: Exception) {
+            Log.e("AugmentRepository", "버전 정보 가져오기 실패", e)
+            "15.1.1" // 기본값
         }
     }
 
@@ -130,7 +144,7 @@ class AugmentRepository(private val context: Context) {
      * 현재 사용 중인 버전 가져오기
      */
     fun getCurrentVersion(): String {
-        return prefs.getString(KEY_CACHED_VERSION, "14.24.1") ?: "14.24.1"
+        return prefs.getString(KEY_CACHED_VERSION, "15.1.1") ?: "15.1.1"
     }
 }
 
