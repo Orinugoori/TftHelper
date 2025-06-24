@@ -62,17 +62,14 @@ class AugmentRepository(private val context: Context) {
             
             // 2. 최신 버전으로 증강 데이터 가져오기
             val response = api.getAugments(latestVersion)
-            val rawAugments = response.data.values.toList()
+            val augments = response.data.values.toList()
             
-            // 3. 증강 데이터 처리 (키워드 추출 등)
-            val processedAugments = processAugments(rawAugments)
+            // 3. 캐시에 저장 (더 이상 처리하지 않고 바로 저장)
+            cacheAugments(augments, latestVersion)
             
-            // 4. 캐시에 저장
-            cacheAugments(processedAugments, latestVersion)
+            Log.d("AugmentRepository", "서버에서 ${augments.size}개 증강 데이터 로드 완료")
             
-            Log.d("AugmentRepository", "서버에서 ${processedAugments.size}개 증강 데이터 로드 완료")
-            
-            processedAugments
+            augments
             
         } catch (e: IOException) {
             Log.e("AugmentRepository", "네트워크 오류", e)
