@@ -21,9 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,12 +58,13 @@ fun AugmentPage(
     val tiers = listOf("전체","실버","골드","프리즘")
 
     val keywordList = viewModel.keywordList.collectAsState()
+
     val filteredAugments by viewModel.filteredAugments.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
 
     var selectedTier = viewModel.selectedTier.collectAsState().value
     var selectedKeyword = viewModel.selectedKeyword.collectAsState().value
+
+
 
     Column(
         modifier
@@ -74,6 +72,7 @@ fun AugmentPage(
             .fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
+
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -90,6 +89,7 @@ fun AugmentPage(
                 )
             )
 
+
             FilterSpinner(
                 options = keywordList.value,
                 selectedOption = selectedKeyword,
@@ -98,68 +98,30 @@ fun AugmentPage(
                     viewModel.filterAugmentsByKeyword(option)
                 }
             )
+
         }
+
 
         Spacer(modifier = Modifier.size(8.dp))
 
-        // 에러 메시지 표시
-        errorMessage?.let { error ->
-            Column {
-                Text(
-                    text = error,
-                    color = TftHelperColor.Red,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(8.dp)
-                )
-                Button(
-                    onClick = { 
-                        viewModel.clearError()
-                        viewModel.refreshAugments() 
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = TftHelperColor.White)
-                ) {
-                    Text("다시 시도", color = TftHelperColor.Black)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
+        AugmentPageWithPager(
+            filteredAugments = filteredAugments ,
+            tiers = tiers,
+            selectedTier = selectedTier,
+            onTierSelected = { tier ->
+                selectedTier = tier
+                viewModel.filterAugmentsByTier(tier)
+        })
 
-        // 로딩 상태 표시
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(color = TftHelperColor.White)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "증강 데이터를 불러오는 중...",
-                        color = TftHelperColor.White,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        } else {
-            AugmentPageWithPager(
-                filteredAugments = filteredAugments,
-                tiers = tiers,
-                selectedTier = selectedTier,
-                onTierSelected = { tier ->
-                    selectedTier = tier
-                    viewModel.filterAugmentsByTier(tier)
-                }
-            )
-        }
     }
 }
+
 
 @Composable
 fun FilterSpinner(options: Set<String>, selectedOption: String, onOptionSelected: (String) -> Unit) {
 
     var expanded by remember { mutableStateOf(false) }
+
 
     CustomDropdownMenu(
         options = options,
@@ -171,12 +133,15 @@ fun FilterSpinner(options: Set<String>, selectedOption: String, onOptionSelected
         selectedOption = selectedOption,
         onExpandChange = { isExpanded -> expanded = isExpanded },
     )
+
 }
+
 
 @Composable
 fun AugmentPageWithPager(filteredAugments: List<Augment>, tiers: List<String>, selectedTier: String, onTierSelected: (String) -> Unit) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size })
     val coroutineScope = rememberCoroutineScope()
+
 
     Column(
         modifier = Modifier
@@ -219,7 +184,25 @@ fun AugmentPageWithPager(filteredAugments: List<Augment>, tiers: List<String>, s
                     }
                 } else {
                     items(filteredAugments) { augment ->
-                        AugmentItem(augment = augment)
+                        Row(
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            AsyncImage(model = "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}", contentDescription = null, modifier = Modifier.size(48.dp) )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = augment.name,
+                                    style = TextStyle(TftHelperColor.White)
+                                )
+                                Text(
+                                    text = augment.description,
+                                    style = TextStyle(
+                                        TftHelperColor.White,
+                                        fontSize = 12.sp
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -235,98 +218,7 @@ fun AugmentPageWithPager(filteredAugments: List<Augment>, tiers: List<String>, s
     }
 }
 
-@Composable
-fun AugmentItem(augment: Augment) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .background(
-                TftHelperColor.Black.copy(alpha = 0.3f),
-                RectangleShape
-            )
-            .padding(12.dp)
-    ) {
-        // 이미지 URL 수정 - 시즌 15 버전 사용
-        AsyncImage(
-            model = "https://ddragon.leagueoflegends.com/cdn/15.1.1/img/tft-augment/${augment.image.full}",
-            contentDescription = null,
-            modifier = Modifier.size(48.dp)
-        )
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            // 증강 이름과 티어 표시
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = augment.name,
-                    style = TextStyle(
-                        color = TftHelperColor.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // 티어 배지
-                val tierColor = when (augment.tier) {
-                    "실버" -> TftHelperColor.SilverGradient3
-                    "골드" -> TftHelperColor.GoldGradient3
-                    "프리즘" -> TftHelperColor.PrismGradient3
-                    else -> TftHelperColor.Grey
-                }
-                
-                Text(
-                    text = augment.tier,
-                    style = TextStyle(
-                        color = TftHelperColor.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier
-                        .background(tierColor, RectangleShape)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // 설명
-            Text(
-                text = augment.description,
-                style = TextStyle(
-                    color = TftHelperColor.White.copy(alpha = 0.8f),
-                    fontSize = 12.sp
-                )
-            )
-            
-            // 키워드 표시
-            if (augment.keyword.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    augment.keyword.take(3).forEach { keyword ->
-                        Text(
-                            text = keyword,
-                            style = TextStyle(
-                                color = TftHelperColor.Black,
-                                fontSize = 10.sp
-                            ),
-                            modifier = Modifier
-                                .background(TftHelperColor.LightGrey, RectangleShape)
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-                }
-            }
-        }
-    }
-}
+
 
 @Composable
 fun AugmentSelectButton(
@@ -382,12 +274,14 @@ fun AugmentSelectButton(
                     )
                 )
             }
+           // val borderColor =
+            //    if (selectedOption == option) Color.Transparent else TftHelperColor.White
 
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .border(BorderStroke(0.4.dp, TftHelperColor.White), RectangleShape)
-                    .background(backgroundColor, RectangleShape)
+                    .border(BorderStroke(0.4.dp, TftHelperColor.White), RectangleShape) // 회색 테두리
+                    .background(backgroundColor, RectangleShape) // 그라디언트 배경
                     .fillMaxHeight()
                     .clickable {
                         onOptionSelected(option)
@@ -405,7 +299,12 @@ fun AugmentSelectButton(
             }
         }
     }
+
 }
+
+
+
+
 
 @Preview(showBackground = true)
 @Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
