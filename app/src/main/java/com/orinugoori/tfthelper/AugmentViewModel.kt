@@ -27,16 +27,9 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     private val _filteredAugments = MutableStateFlow<List<Augment>>(emptyList())
     val filteredAugments: StateFlow<List<Augment>> = _filteredAugments.asStateFlow()
 
-    // 키워드 리스트
-    private val _keywordList = MutableStateFlow<Set<String>>(emptySet())
-    val keywordList: StateFlow<Set<String>> = _keywordList.asStateFlow()
-
     // 필터 상태
     private val _selectedTier = MutableStateFlow("전체")
     val selectedTier: StateFlow<String> = _selectedTier.asStateFlow()
-
-    private val _selectedKeyword = MutableStateFlow("전체")
-    val selectedKeyword: StateFlow<String> = _selectedKeyword.asStateFlow()
 
     // 검색 쿼리
     private val _searchQuery = MutableStateFlow("")
@@ -130,19 +123,15 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * 증강 데이터 업데이트 및 키워드 추출
+     * 증강 데이터 업데이트
      */
     private fun updateAugmentData(augments: List<Augment>) {
         _augments.value = augments
 
-        // 키워드 추출
-        val allKeywords = augments.flatMap { it.keyword }.toSet()
-        _keywordList.value = allKeywords
-
         // 필터 적용
         applyFilters()
 
-        Log.d("AugmentViewModel", "증강 데이터 업데이트: ${augments.size}개, 키워드: ${allKeywords.size}개")
+        Log.d("AugmentViewModel", "증강 데이터 업데이트: ${augments.size}개")
     }
 
     /**
@@ -150,14 +139,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      */
     fun updateTierFilter(tier: String) {
         _selectedTier.value = tier
-        applyFilters()
-    }
-
-    /**
-     * 키워드 필터 변경
-     */
-    fun updateKeywordFilter(keyword: String) {
-        _selectedKeyword.value = keyword
         applyFilters()
     }
 
@@ -174,7 +155,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      */
     fun clearAllFilters() {
         _selectedTier.value = "전체"
-        _selectedKeyword.value = "전체"
         _searchQuery.value = ""
         applyFilters()
     }
@@ -185,23 +165,18 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     private fun applyFilters() {
         val currentAugments = _augments.value
         val currentTier = _selectedTier.value
-        val currentKeyword = _selectedKeyword.value
         val currentQuery = _searchQuery.value
 
         val filtered = currentAugments.filter { augment ->
             // 티어 필터
             val tierMatches = currentTier == "전체" || augment.tier == currentTier
 
-            // 키워드 필터
-            val keywordMatches = currentKeyword == "전체" ||
-                    augment.keyword.contains(currentKeyword)
-
             // 검색 쿼리 필터 (이름과 설명에서 검색)
             val queryMatches = currentQuery.isEmpty() ||
                     augment.name.contains(currentQuery, ignoreCase = true) ||
                     augment.description.contains(currentQuery, ignoreCase = true)
 
-            tierMatches && keywordMatches && queryMatches
+            tierMatches && queryMatches
         }
 
         _filteredAugments.value = filtered
@@ -271,8 +246,7 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val searchResults = _augments.value.filter { augment ->
                 augment.name.contains(query, ignoreCase = true) ||
-                        augment.description.contains(query, ignoreCase = true) ||
-                        augment.keyword.any { keyword -> keyword.contains(query, ignoreCase = true) }
+                        augment.description.contains(query, ignoreCase = true)
             }
             _filteredAugments.value = searchResults
         }
@@ -290,12 +264,5 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      */
     fun filterAugmentsByTier(tier: String) {
         updateTierFilter(tier)
-    }
-
-    /**
-     * 기존 filterAugmentsByKeyword 함수 (호환성 유지)
-     */
-    fun filterAugmentsByKeyword(keyword: String) {
-        updateKeywordFilter(keyword)
     }
 }
