@@ -169,7 +169,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
         applyFilters()
     }
 
-
     /**
      * 모든 필터 초기화
      */
@@ -214,6 +213,37 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      */
     fun getCacheInfo(): CacheInfo {
         return repository.getCacheInfo()
+    }
+
+    /**
+     * 현재 사용 중인 데이터 버전 가져오기
+     */
+    fun getCurrentVersion(): String {
+        return repository.getCurrentVersion()
+    }
+
+    /**
+     * 최신 버전 확인 및 업데이트 필요 여부 반환
+     */
+    suspend fun checkForUpdates(): Boolean {
+        return try {
+            val versions = RetrofitInstance.api.getVersions()
+            val latestVersion = versions.firstOrNull() ?: return false
+            val currentVersion = getCurrentVersion()
+            
+            latestVersion != currentVersion
+        } catch (e: Exception) {
+            Log.e("AugmentViewModel", "버전 확인 실패", e)
+            false
+        }
+    }
+
+    /**
+     * 버전 정보를 UI에 표시하기 위한 데이터 가져오기
+     */
+    fun getVersionInfo(): String {
+        val cacheInfo = getCacheInfo()
+        return "현재 버전: ${cacheInfo.version}"
     }
 
     /**
