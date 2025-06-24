@@ -80,6 +80,9 @@ dependencies {
     //Glide
     implementation(libs.glide)
     implementation(libs.landscapist.glide)
+
+    //Material Icons Extended
+    implementation(libs.androidx.material.icons.extended)
     
 
     // Core 및 Lifecycle 관련

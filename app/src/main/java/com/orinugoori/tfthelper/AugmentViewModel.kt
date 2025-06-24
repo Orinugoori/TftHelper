@@ -1,94 +1,260 @@
 package com.orinugoori.tfthelper
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.io.IOException
 
-class AugmentViewModel : ViewModel() {
+class AugmentViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = AugmentRepository(application.applicationContext)
+
+    // UI 상태 관리
+    private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    // 증강 데이터
     private val _augments = MutableStateFlow<List<Augment>>(emptyList())
-    val augments: StateFlow<List<Augment>> = _augments
+    val augments: StateFlow<List<Augment>> = _augments.asStateFlow()
 
+    // 필터링된 증강 데이터
     private val _filteredAugments = MutableStateFlow<List<Augment>>(emptyList())
-    val filteredAugments: StateFlow<List<Augment>> = _filteredAugments
+    val filteredAugments: StateFlow<List<Augment>> = _filteredAugments.asStateFlow()
 
+    // 키워드 리스트
     private val _keywordList = MutableStateFlow<Set<String>>(emptySet())
-    val keywordList: StateFlow<Set<String>> = _keywordList
+    val keywordList: StateFlow<Set<String>> = _keywordList.asStateFlow()
 
-
+    // 필터 상태
     private val _selectedTier = MutableStateFlow("전체")
-    val selectedTier: StateFlow<String> = _selectedTier
+    val selectedTier: StateFlow<String> = _selectedTier.asStateFlow()
 
     private val _selectedKeyword = MutableStateFlow("전체")
-    val selectedKeyword: StateFlow<String> = _selectedKeyword
+    val selectedKeyword: StateFlow<String> = _selectedKeyword.asStateFlow()
 
+    // 검색 쿼리
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    init {
-        fetchAugments()
+    /**
+     * UI 상태 정의
+     */
+    sealed class UiState {
+        object Loading : UiState()
+        object LoadingFromCache : UiState()
+        data class Success(val message: String = "") : UiState()
+        data class Error(val message: String) : UiState()
+        object NetworkError : UiState()
+        object CacheExpired : UiState()
     }
 
-    //서버에서 데이터 가져오기
-    private fun fetchAugments() {
+    init {
+        // 안전한 초기화
+        _uiState.value = UiState.Loading
+
+        viewModelScope.launch {
+            delay(100) // Compose 초기화 대기
+            loadAugments()
+        }
+    }
+
+    /**
+     * 증강 데이터 로드 (캐시 우선, 그 다음 서버)
+     */
+    private fun loadAugments() {
         viewModelScope.launch {
             try {
-                val response = RetrofitInstance.api.getAugments()
+                _uiState.value = UiState.Loading
 
-                Log.d("API Response", "Augments : ${response.data}")
+                // 1. 캐시에서 먼저 시도
+                val cachedAugments = repository.getCachedAugments()
+                if (cachedAugments != null && cachedAugments.isNotEmpty()) {
+                    Log.d("AugmentViewModel", "캐시에서 데이터 로드 성공")
+                    updateAugmentData(cachedAugments)
+                    _uiState.value = UiState.Success("캐시에서 로드됨")
+                    return@launch
+                }
 
-                val gson = Gson()
-                val jsonResponse = gson.toJson(response)
-                Log.d("Gson Debug", "Json Response: $jsonResponse")
+                // 2. 캐시가 없거나 만료된 경우 서버에서 가져오기
+                Log.d("AugmentViewModel", "서버에서 데이터 가져오는 중...")
+                val serverAugments = repository.fetchAugmentsFromServer()
+                updateAugmentData(serverAugments)
+                _uiState.value = UiState.Success("최신 데이터 로드 완료")
 
-                val augmentResponse = gson.fromJson(jsonResponse, AugmentResponse::class.java)
-                Log.d("Gson Debug", "Parsed Augments: $augmentResponse")
+            } catch (e: IOException) {
+                Log.e("AugmentViewModel", "네트워크 오류", e)
+                _uiState.value = UiState.NetworkError
 
-                val rawAugments = response.data.values.toList()
-                loadAugments(rawAugments)
             } catch (e: Exception) {
-                e.printStackTrace()
-                Log.e("API Error", "Failed to fetch or parse response", e)
+                Log.e("AugmentViewModel", "데이터 로드 실패", e)
+                _uiState.value = UiState.Error(e.message ?: "알 수 없는 오류가 발생했습니다")
             }
         }
     }
 
-    //증강 데이터에 증강 설명 추가
-    private fun loadAugments(rawAugments: List<Augment>) {
-        val processedAugments = processAugments(rawAugments)
-        _augments.value = processedAugments
-        _filteredAugments.value = processedAugments
-        loadKeywordList(processedAugments)
+    /**
+     * 강제 새로고침 (캐시 무시하고 서버에서 가져오기)
+     */
+    fun refreshAugments() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = UiState.Loading
+                repository.clearCache() // 캐시 삭제
+
+                val serverAugments = repository.fetchAugmentsFromServer()
+                updateAugmentData(serverAugments)
+                _uiState.value = UiState.Success("데이터 새로고침 완료")
+
+            } catch (e: IOException) {
+                Log.e("AugmentViewModel", "새로고침 중 네트워크 오류", e)
+                _uiState.value = UiState.NetworkError
+
+            } catch (e: Exception) {
+                Log.e("AugmentViewModel", "새로고침 실패", e)
+                _uiState.value = UiState.Error(e.message ?: "새로고침 중 오류가 발생했습니다")
+            }
+        }
     }
 
-
-    private fun loadKeywordList(augments: List<Augment>) {
-        val keywords =
-            augments.flatMap { it.keyword }.toSet().toMutableList().apply { add(0, "전체") }.toSet()
-        _keywordList.value = keywords
+    /**
+     * 오류 상태에서 재시도
+     */
+    fun retryLoading() {
+        loadAugments()
     }
 
-    fun filterAugmentsByTier(tier: String) {
-        applyFilters(tier = tier)
+    /**
+     * 증강 데이터 업데이트 및 키워드 추출
+     */
+    private fun updateAugmentData(augments: List<Augment>) {
+        _augments.value = augments
+
+        // 키워드 추출
+        val allKeywords = augments.flatMap { it.keyword }.toSet()
+        _keywordList.value = allKeywords
+
+        // 필터 적용
+        applyFilters()
+
+        Log.d("AugmentViewModel", "증강 데이터 업데이트: ${augments.size}개, 키워드: ${allKeywords.size}개")
     }
 
-
-    fun filterAugmentsByKeyword(keyword: String) {
-        applyFilters(keyword = keyword)
+    /**
+     * 티어 필터 변경
+     */
+    fun updateTierFilter(tier: String) {
+        _selectedTier.value = tier
+        applyFilters()
     }
 
-    private fun applyFilters(tier: String? = null, keyword: String? = null) {
+    /**
+     * 키워드 필터 변경
+     */
+    fun updateKeywordFilter(keyword: String) {
+        _selectedKeyword.value = keyword
+        applyFilters()
+    }
 
-        if (tier != null) _selectedTier.value = tier
-        if (keyword != null) _selectedKeyword.value = keyword
+    /**
+     * 검색 쿼리 변경
+     */
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+        applyFilters()
+    }
 
-        _filteredAugments.value = _augments.value.filter { augment ->
-            (_selectedTier.value == "전체" || augment.tier == _selectedTier.value) &&
-                    (_selectedKeyword.value == "전체" || augment.keyword.contains(_selectedKeyword.value))
+    /**
+     * 검색 초기화
+     */
+    fun clearSearch() {
+        _searchQuery.value = ""
+        applyFilters()
+    }
+
+    /**
+     * 모든 필터 초기화
+     */
+    fun clearAllFilters() {
+        _selectedTier.value = "전체"
+        _selectedKeyword.value = "전체"
+        _searchQuery.value = ""
+        applyFilters()
+    }
+
+    /**
+     * 필터 적용
+     */
+    private fun applyFilters() {
+        val currentAugments = _augments.value
+        val currentTier = _selectedTier.value
+        val currentKeyword = _selectedKeyword.value
+        val currentQuery = _searchQuery.value
+
+        val filtered = currentAugments.filter { augment ->
+            // 티어 필터
+            val tierMatches = currentTier == "전체" || augment.tier == currentTier
+
+            // 키워드 필터
+            val keywordMatches = currentKeyword == "전체" ||
+                    augment.keyword.contains(currentKeyword)
+
+            // 검색 쿼리 필터 (이름과 설명에서 검색)
+            val queryMatches = currentQuery.isEmpty() ||
+                    augment.name.contains(currentQuery, ignoreCase = true) ||
+                    augment.description.contains(currentQuery, ignoreCase = true)
+
+            tierMatches && keywordMatches && queryMatches
         }
 
+        _filteredAugments.value = filtered
+        Log.d("AugmentViewModel", "필터 적용 결과: ${filtered.size}개 (전체: ${currentAugments.size}개)")
+    }
+
+    /**
+     * 캐시 정보 가져오기
+     */
+    fun getCacheInfo(): CacheInfo {
+        return repository.getCacheInfo()
+    }
+
+    /**
+     * 특정 증강 찾기
+     */
+    fun findAugmentById(id: String): Augment? {
+        return _augments.value.find { it.id == id }
+    }
+
+    /**
+     * 티어별 증강 개수 가져오기
+     */
+    fun getAugmentCountByTier(): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        _augments.value.forEach { augment ->
+            val tier = augment.tier.ifEmpty { "기타" }
+            counts[tier] = (counts[tier] ?: 0) + 1
+        }
+        return counts
+    }
+
+    // ===== 기존 코드와의 호환성 유지 =====
+
+    /**
+     * 기존 filterAugmentsByTier 함수 (호환성 유지)
+     */
+    fun filterAugmentsByTier(tier: String) {
+        updateTierFilter(tier)
+    }
+
+    /**
+     * 기존 filterAugmentsByKeyword 함수 (호환성 유지)
+     */
+    fun filterAugmentsByKeyword(keyword: String) {
+        updateKeywordFilter(keyword)
     }
 }
-
-

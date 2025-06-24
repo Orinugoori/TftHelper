@@ -1,327 +1,355 @@
 package com.orinugoori.tfthelper.screen
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.orinugoori.tfthelper.Augment
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.orinugoori.tfthelper.AugmentViewModel
-import com.orinugoori.tfthelper.CustomDropdownMenu
-import com.orinugoori.tfthelper.ui.theme.TFThelperTheme
-import com.orinugoori.tfthelper.ui.theme.TftHelperColor
-import kotlinx.coroutines.launch
+import com.orinugoori.tfthelper.ui.components.*
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AugmentPage(
-    viewModel: AugmentViewModel,
+fun AugmentsPage(
+    viewModel: AugmentViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val augments by viewModel.filteredAugments.collectAsState()
+    val selectedTier by viewModel.selectedTier.collectAsState()
+    val selectedKeyword by viewModel.selectedKeyword.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val keywordList by viewModel.keywordList.collectAsState()
 
-    val tiers = listOf("전체","실버","골드","프리즘")
+    var showCacheInfo by remember { mutableStateOf(false) }
+    var showSuccessMessage by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
 
-    val keywordList = viewModel.keywordList.collectAsState()
-
-    val filteredAugments by viewModel.filteredAugments.collectAsState()
-
-    var selectedTier = viewModel.selectedTier.collectAsState().value
-    var selectedKeyword = viewModel.selectedKeyword.collectAsState().value
-
-
-
-    Column(
-        modifier
-            .padding(top = 64.dp, start = 16.dp, end = 16.dp)
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                modifier = Modifier.padding(bottom = 8.dp),
-                text = "증강 리스트",
-                style = TextStyle(
-                    TftHelperColor.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-
-            FilterSpinner(
-                options = keywordList.value,
-                selectedOption = selectedKeyword,
-                onOptionSelected = { option ->
-                    selectedKeyword = option
-                    viewModel.filterAugmentsByKeyword(option)
-                }
-            )
-
+    // 성공 메시지 처리
+    LaunchedEffect(uiState) {
+        if (uiState is AugmentViewModel.UiState.Success && (uiState as AugmentViewModel.UiState.Success).message.isNotEmpty()) {
+            successMessage = (uiState as AugmentViewModel.UiState.Success).message
+            showSuccessMessage = true
         }
-
-
-        Spacer(modifier = Modifier.size(8.dp))
-
-        AugmentPageWithPager(
-            filteredAugments = filteredAugments ,
-            tiers = tiers,
-            selectedTier = selectedTier,
-            onTierSelected = { tier ->
-                selectedTier = tier
-                viewModel.filterAugmentsByTier(tier)
-        })
-
     }
-}
 
-
-@Composable
-fun FilterSpinner(options: Set<String>, selectedOption: String, onOptionSelected: (String) -> Unit) {
-
-    var expanded by remember { mutableStateOf(false) }
-
-
-    CustomDropdownMenu(
-        options = options,
-        onOptionSelected = { option->
-                onOptionSelected(option)
-                expanded = false
-        },
-        expanded = expanded,
-        selectedOption = selectedOption,
-        onExpandChange = { isExpanded -> expanded = isExpanded },
-    )
-
-}
-
-
-@Composable
-fun AugmentPageWithPager(filteredAugments: List<Augment>, tiers: List<String>, selectedTier: String, onTierSelected: (String) -> Unit) {
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { tiers.size })
-    val coroutineScope = rememberCoroutineScope()
-
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // AugmentSelectButton과 HorizontalPager 연동
-        AugmentSelectButton(
-            options = tiers,
-            pagerState = pagerState,
-            onOptionSelected = { selectedTier ->
-                val targetPage = tiers.indexOf(selectedTier)
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(targetPage)
+    Column(modifier = modifier.fillMaxSize()) {
+        // 상단 툴바
+        TopAppBar(
+            title = { Text("증강 가이드") },
+            actions = {
+                IconButton(onClick = { showCacheInfo = !showCacheInfo }) {
+                    Icon(Icons.Default.Info, contentDescription = "캐시 정보")
+                }
+                IconButton(onClick = { viewModel.refreshAugments() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "새로고침")
                 }
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // 캐시 정보 카드 (토글)
+        if (showCacheInfo) {
+            CacheInfoCard(
+                cacheInfo = viewModel.getCacheInfo(),
+                onClearCache = {
+                    viewModel.refreshAugments()
+                    showCacheInfo = false
+                },
+                modifier = Modifier.padding(16.dp)
+            )
+        }
 
-        // HorizontalPager를 활용한 페이지 전환
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { _->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (filteredAugments.isEmpty()) {
-                    item {
-                        Text(
-                            text = "해당되는 증강이 없습니다.",
-                            color = TftHelperColor.White,
-                            fontSize = 16.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            textAlign = TextAlign.Center
+        when (uiState) {
+            is AugmentViewModel.UiState.Loading -> {
+                LoadingIndicator(
+                    message = "증강 데이터를 불러오는 중...",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            is AugmentViewModel.UiState.LoadingFromCache -> {
+                LoadingIndicator(
+                    message = "캐시에서 데이터를 불러오는 중...",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            is AugmentViewModel.UiState.Error,
+            is AugmentViewModel.UiState.NetworkError,
+            is AugmentViewModel.UiState.CacheExpired -> {
+                ErrorStateUI(
+                    uiState = uiState,
+                    onRetry = { viewModel.retryLoading() },
+                    onRefresh = { viewModel.refreshAugments() },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            is AugmentViewModel.UiState.Success -> {
+                // 성공 상태 - 필터와 리스트 표시
+                Column(modifier = Modifier.weight(1f)) {
+                    // 검색 바
+                    SearchAndFilterSection(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                        onClearSearch = { viewModel.clearSearch() },
+                        selectedTier = selectedTier,
+                        onTierChange = { viewModel.updateTierFilter(it) },
+                        selectedKeyword = selectedKeyword,
+                        onKeywordChange = { viewModel.updateKeywordFilter(it) },
+                        keywordList = keywordList,
+                        onClearAllFilters = { viewModel.clearAllFilters() }
+                    )
+
+                    // 결과 표시
+                    if (augments.isEmpty()) {
+                        EmptyStateUI(
+                            icon = Icons.Default.SearchOff,
+                            title = "검색 결과가 없습니다",
+                            message = "다른 검색어나 필터를 사용해보세요.",
+                            actionButtonText = "필터 초기화",
+                            onActionClick = { viewModel.clearAllFilters() },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        AugmentList(
+                            augments = augments,
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                } else {
-                    items(filteredAugments) { augment ->
-                        Row(
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            AsyncImage(model = "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/tft-augment/${augment.image.full}", contentDescription = null, modifier = Modifier.size(48.dp) )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = augment.name,
-                                    style = TextStyle(TftHelperColor.White)
-                                )
-                                Text(
-                                    text = augment.description,
-                                    style = TextStyle(
-                                        TftHelperColor.White,
-                                        fontSize = 12.sp
-                                    )
-                                )
-                            }
+                }
+            }
+        }
+
+        // 성공 스낵바
+        if (showSuccessMessage) {
+            SuccessSnackbar(
+                message = successMessage,
+                onDismiss = { showSuccessMessage = false },
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchAndFilterSection(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    selectedTier: String,
+    onTierChange: (String) -> Unit,
+    selectedKeyword: String,
+    onKeywordChange: (String) -> Unit,
+    keywordList: Set<String>,
+    onClearAllFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 검색 바
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                label = { Text("증강 검색") },
+                placeholder = { Text("증강 이름으로 검색...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = onClearSearch) {
+                            Icon(Icons.Default.Clear, contentDescription = "검색 초기화")
                         }
                     }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 티어 필터
+                FilterDropdown(
+                    label = "티어",
+                    selectedValue = selectedTier,
+                    options = listOf("전체", "실버", "골드", "프리즘"),
+                    onValueChange = onTierChange,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // 키워드 필터
+                FilterDropdown(
+                    label = "키워드",
+                    selectedValue = selectedKeyword,
+                    options = listOf("전체") + keywordList.sorted(),
+                    onValueChange = onKeywordChange,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // 필터 초기화 버튼
+            if (selectedTier != "전체" || selectedKeyword != "전체" || searchQuery.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = onClearAllFilters,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.FilterAltOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("모든 필터 초기화")
                 }
             }
-        }
-    }
-
-    // Pager와 필터링 동기화
-    LaunchedEffect(pagerState.currentPage) {
-        val currentTier = tiers[pagerState.currentPage]
-        if (currentTier != selectedTier) {
-            onTierSelected(currentTier) // 티어 선택 변경 외부로 전달
         }
     }
 }
 
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AugmentSelectButton(
+private fun FilterDropdown(
+    label: String,
+    selectedValue: String,
     options: List<String>,
-    pagerState : PagerState,
-    onOptionSelected: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(40.dp),
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
     ) {
-        options.forEachIndexed { index, option ->
-            val backgroundColor = when (pagerState.currentPage == index) {
-                true -> when (option) {
-                    "실버" -> Brush.linearGradient(
-                        colors = listOf(
-                            TftHelperColor.SilverGradient1,
-                            TftHelperColor.SilverGradient2,
-                            TftHelperColor.SilverGradient3,
-                            TftHelperColor.SilverGradient4,
-                            TftHelperColor.SilverGradient5
-                        )
-                    )
+        OutlinedTextField(
+            value = selectedValue,
+            onValueChange = { },
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
 
-                    "골드" -> Brush.linearGradient(
-                        colors = listOf(
-                            TftHelperColor.GoldGradient1,
-                            TftHelperColor.GoldGradient2,
-                            TftHelperColor.GoldGradient3,
-                            TftHelperColor.GoldGradient4,
-                            TftHelperColor.GoldGradient5
-                        )
-                    )
-
-                    "프리즘" -> Brush.linearGradient(
-                        colors = listOf(
-                            TftHelperColor.PrismGradient1,
-                            TftHelperColor.PrismGradient2,
-                            TftHelperColor.PrismGradient3,
-                            TftHelperColor.PrismGradient4,
-                            TftHelperColor.PrismGradient5,
-                        )
-                    )
-
-                    else -> Brush.linearGradient(listOf(TftHelperColor.Grey, TftHelperColor.Grey))
-                }
-
-                false -> Brush.linearGradient(
-                    listOf(
-                        TftHelperColor.Black,
-                        TftHelperColor.Black
-                    )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onValueChange(option)
+                        expanded = false
+                    }
                 )
             }
-           // val borderColor =
-            //    if (selectedOption == option) Color.Transparent else TftHelperColor.White
+        }
+    }
+}
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .border(BorderStroke(0.4.dp, TftHelperColor.White), RectangleShape) // 회색 테두리
-                    .background(backgroundColor, RectangleShape) // 그라디언트 배경
-                    .fillMaxHeight()
-                    .clickable {
-                        onOptionSelected(option)
-                    },
-                contentAlignment = Alignment.Center
+@Composable
+private fun AugmentList(
+    augments: List<com.orinugoori.tfthelper.Augment>,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(
+            items = augments,
+            key = { it.id }
+        ) { augment ->
+            AugmentCard(augment = augment)
+        }
+    }
+}
+
+@Composable
+private fun AugmentCard(
+    augment: com.orinugoori.tfthelper.Augment,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = option,
-                    color = TftHelperColor.White,
-                    style = TextStyle(
-                        fontWeight = if(pagerState.currentPage == index) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 14.sp
+                    text = augment.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (augment.tier.isNotEmpty()) {
+                    AssistChip(
+                        onClick = { },
+                        label = { Text(augment.tier) },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = when (augment.tier) {
+                                "실버" -> MaterialTheme.colorScheme.surfaceVariant
+                                "골드" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+                                "프리즘" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
                     )
+                }
+            }
+
+            if (augment.description.isNotEmpty()) {
+                Text(
+                    text = augment.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
-        }
-    }
 
-}
-
-
-
-
-
-@Preview(showBackground = true)
-@Preview(name = "Normal Device", widthDp = 360, heightDp = 640)
-@Preview(name = "Large Device", widthDp = 600, heightDp = 960)
-@Preview(
-    name = "Galaxy Flip Preview",
-    device = "spec:shape=Normal,width=1080,height=2636,unit=px,dpi=420"
-)
-@Composable
-fun AugmentScreenPreview() {
-    TFThelperTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TftHelperColor.Black)
-        ) {
-            AugmentPage(viewModel = AugmentViewModel())
+            if (augment.keyword.isNotEmpty()) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(augment.keyword) { keyword ->
+                        FilterChip(
+                            onClick = { },
+                            label = { Text(keyword, style = MaterialTheme.typography.bodySmall) },
+                            selected = false
+                        )
+                    }
+                }
+            }
         }
     }
 }
