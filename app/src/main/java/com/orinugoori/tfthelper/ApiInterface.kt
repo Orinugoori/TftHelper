@@ -1,6 +1,5 @@
 package com.orinugoori.tfthelper
 
-import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -9,7 +8,7 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface TFTApiService {
-    // Data Dragon에서 TFT 증강 데이터 가져오기 (한국어)
+    // 올바른 Data Dragon TFT 증강 API
     @GET("cdn/{version}/data/ko_KR/tft-augments.json")
     suspend fun getAugments(@Path("version") version: String): AugmentResponse
 
@@ -18,24 +17,79 @@ interface TFTApiService {
     suspend fun getVersions(): List<String>
 }
 
-// HTML 정리 및 설명 처리 함수들
-fun cleanAugmentDescription(description: String): String {
+// 기존 데이터 구조 유지 (호환성)
+data class AugmentResponse(
+    val data: Map<String, Augment>
+)
+
+data class Augment(
+    val id: String,
+    val tier: String = "",
+    val name: String,
+    val image: ImageInfo,
+    val description: String = ""
+)
+
+data class ImageInfo(
+    val full: String
+)
+
+/**
+ * 이미지 파일명을 기반으로 증강체 티어를 추출하는 함수
+ * TFT 증강체는 이미지 파일명 끝의 숫자로 티어를 구분함
+ */
+fun extractTierFromImageName(imageName: String): String {
+    return when {
+        // 파일명이 3으로 끝나면 프리즘
+        imageName.matches(Regex(".*3\\.(png|jpg|jpeg)$")) -> "프리즘"
+        // 파일명이 2로 끝나면 골드
+        imageName.matches(Regex(".*2\\.(png|jpg|jpeg)$")) -> "골드"
+        // 파일명이 1로 끝나거나 숫자가 없으면 실버
+        imageName.matches(Regex(".*1\\.(png|jpg|jpeg)$")) ||
+        !imageName.matches(Regex(".*[0-9]\\.(png|jpg|jpeg)$")) -> "실버"
+        // 기타 경우 실버로 기본 설정
+        else -> "실버"
+    }
+}
+
+/**
+ * API 응답의 증강체 데이터를 처리하여 올바른 티어 정보를 추가
+ */
+fun processAugmentData(response: AugmentResponse): List<Augment> {
+    return response.data.values.map { augment ->
+        val tier = extractTierFromImageName(augment.image.full)
+        val cleanedDescription = cleanHtmlTags(augment.description)
+        
+        augment.copy(
+            tier = tier,
+            description = cleanedDescription
+        )
+    }.sortedBy { it.name }
+}
+
+/**
+ * HTML 태그 및 특수 문자를 정리하는 함수
+ */
+fun cleanHtmlTags(description: String): String {
     if (description.isBlank()) return "설명이 없습니다."
     
     var cleaned = description
     
-    // HTML 태그 제거 (모든 태그 포함)
+    // HTML 태그 제거 (모든 종류의 태그)
     cleaned = cleaned.replace(Regex("<[^>]*>"), "")
     
-    // 특수 문자 및 플레이스홀더 제거
+    // TFT에서 자주 사용되는 플레이스홀더 제거
     cleaned = cleaned.replace(Regex("@[^@]*@"), "")
     cleaned = cleaned.replace(Regex("%[^%]*%"), "")
+    cleaned = cleaned.replace(Regex("\\{\\{[^}]*\\}\\}"), "")
+    
+    // HTML 엔티티 변환
     cleaned = cleaned.replace("&nbsp;", " ")
     cleaned = cleaned.replace("&lt;", "<")
     cleaned = cleaned.replace("&gt;", ">")
     cleaned = cleaned.replace("&amp;", "&")
     cleaned = cleaned.replace("&quot;", "\"")
-    cleaned = cleaned.replace("&#39;", "'")
+    cleaned = cleaned.replace("&#x27;", "'")
     
     // 연속된 공백을 하나로 통합
     cleaned = cleaned.replace(Regex("\\s+"), " ")
@@ -46,29 +100,9 @@ fun cleanAugmentDescription(description: String): String {
     return if (cleaned.isBlank()) "설명이 없습니다." else cleaned
 }
 
-// API 응답에서 티어 추출 (ID 기반)
-fun extractTierFromId(id: String): String {
-    val lowerId = id.lowercase()
-    
-    return when {
-        // 프리즘 티어 패턴
-        lowerId.contains("iii") || 
-        lowerId.contains("_3_") ||
-        lowerId.contains("prismatic") ||
-        lowerId.contains("legend") -> "프리즘"
-        
-        // 골드 티어 패턴  
-        lowerId.contains("ii") || 
-        lowerId.contains("_2_") ||
-        lowerId.contains("gold") ||
-        lowerId.contains("rare") -> "골드"
-        
-        // 실버 티어 (기본값)
-        else -> "실버"
-    }
-}
-
-// 증강 이름 정규화
+/**
+ * 증강체 이름을 정규화하는 함수
+ */
 fun normalizeAugmentName(name: String): String {
     return name.trim()
         .replace(Regex("\\s+"), " ")
@@ -78,22 +112,7 @@ fun normalizeAugmentName(name: String): String {
         .replace(""", "\"")
 }
 
-// Data Dragon 응답을 앱에서 사용하는 형태로 변환
-fun AugmentResponse.processAugments(): List<Augment> {
-    return this.data.values.map { augment ->
-        val cleanedName = normalizeAugmentName(augment.name)
-        val tier = extractTierFromId(augment.id)
-        val cleanedDescription = cleanAugmentDescription(augment.description ?: "")
-        
-        augment.copy(
-            name = cleanedName,
-            tier = tier,
-            description = cleanedDescription
-        )
-    }.sortedBy { it.name }
-}
-
-// Retrofit 설정
+// Retrofit 설정 - 올바른 Data Dragon URL 사용
 object RetrofitInstance {
     private const val BASE_URL = "https://ddragon.leagueoflegends.com/"
 
@@ -120,4 +139,3 @@ object RetrofitInstance {
             .create(TFTApiService::class.java)
     }
 }
-
