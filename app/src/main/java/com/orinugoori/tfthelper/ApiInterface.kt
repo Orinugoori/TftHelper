@@ -9,8 +9,13 @@ import retrofit2.http.GET
 
 
 interface TFTApiService {
-    @GET("cdn/14.24.1/data/ko_KR/tft-augments.json")
+    // 최신 시즌 15 데이터 사용 (15.1.1)
+    @GET("cdn/15.1.1/data/ko_KR/tft-augments.json")
     suspend fun getAugments(): AugmentResponse
+    
+    // 버전 정보를 가져올 수 있는 엔드포인트 추가
+    @GET("api/versions.json")
+    suspend fun getVersions(): List<String>
 }
 
 // Retrofit 설정
@@ -35,5 +40,6 @@ object RetrofitInstance {
             .create(TFTApiService::class.java)
     }
 }
+
 
 
