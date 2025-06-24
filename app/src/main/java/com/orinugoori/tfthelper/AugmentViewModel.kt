@@ -74,8 +74,8 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
-                // 2. 캐시가 없거나 만료된 경우 서버에서 가져오기
-                Log.d("AugmentViewModel", "서버에서 데이터 가져오는 중...")
+                // 2. 캐시가 없거나 만료된 경우 Community Dragon에서 가져오기
+                Log.d("AugmentViewModel", "Community Dragon에서 데이터 가져오는 중...")
                 val serverAugments = repository.fetchAugmentsFromServer()
                 updateAugmentData(serverAugments)
                 _uiState.value = UiState.Success("최신 데이터 로드 완료")
@@ -199,16 +199,15 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * 최신 버전 확인 및 업데이트 필요 여부 반환
+     * Community Dragon은 항상 최신이므로 항상 false 반환
      */
     suspend fun checkForUpdates(): Boolean {
         return try {
-            val versions = RetrofitInstance.api.getVersions()
-            val latestVersion = versions.firstOrNull() ?: return false
-            val currentVersion = getCurrentVersion()
-            
-            latestVersion != currentVersion
+            // Community Dragon은 항상 최신 데이터를 제공하므로
+            // 정기적인 새로고침만 필요
+            false
         } catch (e: Exception) {
-            Log.e("AugmentViewModel", "버전 확인 실패", e)
+            Log.e("AugmentViewModel", "업데이트 확인 실패", e)
             false
         }
     }
@@ -218,7 +217,7 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      */
     fun getVersionInfo(): String {
         val cacheInfo = getCacheInfo()
-        return "현재 버전: ${cacheInfo.version}"
+        return "현재 버전: ${cacheInfo.version} (Community Dragon)"
     }
 
     /**
