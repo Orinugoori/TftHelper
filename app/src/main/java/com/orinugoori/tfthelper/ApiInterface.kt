@@ -57,7 +57,7 @@ fun processAugmentData(response: AugmentResponse): List<Augment> {
     return response.data.values.map { augment ->
         val tier = extractTierFromImageName(augment.image.full)
         val cleanedDescription = cleanHtmlTags(augment.description)
-
+        
         augment.copy(
             tier = tier,
             description = cleanedDescription
