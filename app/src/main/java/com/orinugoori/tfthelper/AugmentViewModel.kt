@@ -1,6 +1,7 @@
 package com.orinugoori.tfthelper
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,6 +36,20 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    // 🔍 검색 관련 새로운 상태들
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    private val _searchSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val searchSuggestions: StateFlow<List<String>> = _searchSuggestions.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    // 검색 히스토리 저장소 (SharedPreferences)
+    private val searchHistoryPrefs = application.getSharedPreferences("search_history", Context.MODE_PRIVATE)
+
+
     /**
      * UI 상태 정의
      */
@@ -55,6 +70,9 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
             delay(100) // Compose 초기화 대기
             loadAugments()
         }
+
+        loadSearchHistory()
+
     }
 
     /**
@@ -240,28 +258,178 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // 검색 기능
-    fun searchAugments(query: String) {
-        // 증강 이름이나 설명에서 검색어 포함하는 항목 필터링
+    fun searchAugmentsAdvanced(query: String) {
         viewModelScope.launch {
-            val searchResults = _augments.value.filter { augment ->
-                augment.name.contains(query, ignoreCase = true) ||
-                        augment.description.contains(query, ignoreCase = true)
+            _isSearching.value = true
+            _searchQuery.value = query
+
+            if (query.isBlank()) {
+                // 빈 검색어일 때는 전체 목록 표시
+                _filteredAugments.value = _augments.value
+                _searchSuggestions.value = emptyList()
+                _isSearching.value = false
+                return@launch
             }
+
+            // 실시간 검색 수행
+            val searchResults = _augments.value.filter { augment ->
+                val queryLower = query.lowercase()
+
+                // 다양한 검색 조건
+                augment.name.lowercase().contains(queryLower) ||
+                        augment.description.lowercase().contains(queryLower) ||
+                        augment.tier.lowercase().contains(queryLower) ||
+                        // 초성 검색 지원 (한글)
+                        isInitialConsonantMatch(augment.name, query) ||
+                        // 영어 이름이 있다면 영어도 검색
+                        augment.name.lowercase().replace(" ", "").contains(queryLower.replace(" ", ""))
+            }
+
             _filteredAugments.value = searchResults
+
+            // 자동완성 제안 생성
+            generateSearchSuggestions(query)
+
+            _isSearching.value = false
+
+            // 검색어가 3글자 이상이면 히스토리에 추가
+            if (query.length >= 3) {
+                addToSearchHistory(query)
+            }
         }
     }
 
-    // 검색 초기화 (선택사항)
-    fun clearSearch() {
+    fun clearSearch(){
         _filteredAugments.value = _augments.value
     }
 
-    // ===== 기존 코드와의 호환성 유지 =====
+    /**
+     * 🔍 한글 초성 검색 지원
+     */
+    private fun isInitialConsonantMatch(text: String, query: String): Boolean {
+        if (query.length > text.length) return false
+
+        val consonants = mapOf(
+            'ㄱ' to "가-깋", 'ㄴ' to "나-닣", 'ㄷ' to "다-딯", 'ㄹ' to "라-맇",
+            'ㅁ' to "마-밓", 'ㅂ' to "바-빟", 'ㅅ' to "사-싷", 'ㅇ' to "아-잏",
+            'ㅈ' to "자-짛", 'ㅊ' to "차-칟", 'ㅋ' to "카-킿", 'ㅌ' to "타-팋",
+            'ㅍ' to "파-핗", 'ㅎ' to "하-힣"
+        )
+
+        try {
+            for (i in query.indices) {
+                val queryChar = query[i]
+                val textChar = text.getOrNull(i) ?: return false
+
+                if (consonants.containsKey(queryChar)) {
+                    val range = consonants[queryChar]!!.split("-")
+                    val start = range[0][0]
+                    val end = range[1][0]
+
+                    if (textChar !in start..end) {
+                        return false
+                    }
+                } else if (queryChar.lowercaseChar() != textChar.lowercaseChar()) {
+                    return false
+                }
+            }
+            return true
+        } catch (e: Exception) {
+            return false
+        }
+    }
 
     /**
-     * 기존 filterAugmentsByTier 함수 (호환성 유지)
+     * 🔍 자동완성 제안 생성
      */
-    fun filterAugmentsByTier(tier: String) {
-        updateTierFilter(tier)
+    private fun generateSearchSuggestions(query: String) {
+        val suggestions = _augments.value
+            .map { it.name }
+            .filter { it.lowercase().contains(query.lowercase()) }
+            .distinct()
+            .take(5)
+            .sorted()
+
+        _searchSuggestions.value = suggestions
+    }
+
+    /**
+     * 🔍 검색 히스토리 추가
+     */
+    private fun addToSearchHistory(query: String) {
+        val currentHistory = _searchHistory.value.toMutableList()
+
+        // 중복 제거
+        currentHistory.remove(query)
+        // 맨 앞에 추가
+        currentHistory.add(0, query)
+        // 최대 10개까지만 저장
+        if (currentHistory.size > 10) {
+            currentHistory.removeAt(currentHistory.size - 1)
+        }
+
+        _searchHistory.value = currentHistory
+        saveSearchHistory(currentHistory)
+    }
+
+    /**
+     * 🔍 검색 히스토리 저장
+     */
+    private fun saveSearchHistory(history: List<String>) {
+        searchHistoryPrefs.edit()
+            .putStringSet("history", history.toSet())
+            .apply()
+    }
+
+    /**
+     * 🔍 검색 히스토리 로드
+     */
+    private fun loadSearchHistory() {
+        val historySet = searchHistoryPrefs.getStringSet("history", emptySet()) ?: emptySet()
+        _searchHistory.value = historySet.toList().take(10)
+    }
+
+    /**
+     * 🔍 검색 히스토리 클리어
+     */
+    fun clearSearchHistory() {
+        _searchHistory.value = emptyList()
+        searchHistoryPrefs.edit().clear().apply()
+    }
+
+    /**
+     * 🔍 특정 검색어로 바로 검색
+     */
+    fun searchWithSuggestion(suggestion: String) {
+        searchAugmentsAdvanced(suggestion)
+    }
+
+    /**
+     * 🔍 고급 필터 검색 (티어 + 텍스트 검색 조합)
+     */
+    fun advancedSearch(query: String, selectedTier: String) {
+        viewModelScope.launch {
+            _isSearching.value = true
+
+            val filteredByTier = if (selectedTier == "전체") {
+                _augments.value
+            } else {
+                _augments.value.filter { it.tier == selectedTier }
+            }
+
+            val searchResults = if (query.isBlank()) {
+                filteredByTier
+            } else {
+                filteredByTier.filter { augment ->
+                    val queryLower = query.lowercase()
+                    augment.name.lowercase().contains(queryLower) ||
+                            augment.description.lowercase().contains(queryLower) ||
+                            isInitialConsonantMatch(augment.name, query)
+                }
+            }
+
+            _filteredAugments.value = searchResults
+            _isSearching.value = false
+        }
     }
 }

@@ -1,18 +1,22 @@
 package com.orinugoori.tfthelper.screen
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,14 +31,19 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -73,9 +82,14 @@ fun AugmentPage(
 ) {
     val tiers = listOf("전체","실버","골드","프리즘")
     val filteredAugments by viewModel.filteredAugments.collectAsState()
-    var selectedTier = viewModel.selectedTier.collectAsState().value
+    val selectedTier by viewModel.selectedTier.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
+    val searchSuggestions by viewModel.searchSuggestions.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+
     var isSearchMode by remember { mutableStateOf(false) }
-    var searchText by remember { mutableStateOf("") }
+    var showSearchHistory by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // 현재 버전 정보 가져오기
@@ -86,18 +100,116 @@ fun AugmentPage(
             .fillMaxSize()
             .background(TftHelperColor.Black)
     ) {
-        // 커스텀 탑 앱바
-        TopAppBar(
-            title = {
-                if (isSearchMode) {
-                    // 검색 모드
+
+        // 🔍 개선된 검색 바
+        EnhancedSearchTopBar(
+            isSearchMode = isSearchMode,
+            searchQuery = searchQuery,
+            searchSuggestions = searchSuggestions,
+            searchHistory = searchHistory,
+            showSearchHistory = showSearchHistory,
+            isSearching = isSearching,
+            currentVersion = currentVersion,
+            onSearchModeChange = { isSearchMode = it },
+            onSearchQueryChange = {
+                viewModel.searchAugmentsAdvanced(it)
+                showSearchHistory = it.isEmpty() && searchHistory.isNotEmpty()
+            },
+            onSearchHistoryToggle = { showSearchHistory = it },
+            onSuggestionClick = { suggestion ->
+                viewModel.searchWithSuggestion(suggestion)
+                keyboardController?.hide()
+                showSearchHistory = false
+            },
+            onRefresh = { viewModel.refreshAugments() },
+            onClearSearch = {
+                viewModel.clearSearch()
+                keyboardController?.hide()
+                isSearchMode = false
+                showSearchHistory = false
+            }
+        )
+
+        // 🎯 티어 선택 및 검색 결과 표시
+        AnimatedContent(
+            targetState = isSearchMode,
+            label = "search_content_transition"
+        ) { searchMode ->
+            if (searchMode && showSearchHistory) {
+                // 🔍 검색 히스토리 및 제안 UI
+                SearchHistorySection(
+                    searchHistory = searchHistory,
+                    searchSuggestions = searchSuggestions,
+                    onHistoryItemClick = { historyItem ->
+                        viewModel.searchWithSuggestion(historyItem)
+                        showSearchHistory = false
+                    },
+                    onClearHistory = { viewModel.clearSearchHistory() }
+                )
+            } else {
+                // 📱 메인 증강체 리스트
+                Column {
+                    if (!searchMode) {
+                        // 티어 선택 탭 (검색 모드가 아닐 때만 표시)
+                        EnhancedTierSelector(
+                            tiers = tiers,
+                            selectedTier = selectedTier,
+                            augmentCounts = viewModel.getAugmentCountByTier(),
+                            onTierSelected = { tier ->
+                                viewModel.updateTierFilter(tier)
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 🚀 성능 최적화된 증강체 리스트
+                    OptimizedAugmentList(
+                        augments = filteredAugments,
+                        currentVersion = currentVersion,
+                        isSearchMode = searchMode,
+                        searchQuery = searchQuery,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 🔍 향상된 검색 탑바
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EnhancedSearchTopBar(
+    isSearchMode: Boolean,
+    searchQuery: String,
+    searchSuggestions: List<String>,
+    searchHistory: List<String>,
+    showSearchHistory: Boolean,
+    isSearching: Boolean,
+    currentVersion: String,
+    onSearchModeChange: (Boolean) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchHistoryToggle: (Boolean) -> Unit,
+    onSuggestionClick: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onClearSearch: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            if (isSearchMode) {
+                // 🔍 검색 입력 필드
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     BasicTextField(
-                        value = searchText,
-                        onValueChange = {
-                            searchText = it
-                            // 실시간 검색
-                            viewModel.searchAugments(it)
-                        },
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
                         textStyle = TextStyle(
                             color = TftHelperColor.White,
                             fontSize = 18.sp
@@ -106,100 +218,356 @@ fun AugmentPage(
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Search
                         ),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                // 검색 실행
-                                viewModel.searchAugments(searchText)
-                                keyboardController?.hide()
-                            }
-                        ),
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .padding(horizontal = 8.dp),
                         decorationBox = { innerTextField ->
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                if (searchText.isEmpty()) {
+                            Box {
+                                if (searchQuery.isEmpty()) {
                                     Text(
-                                        "증강 검색...",
+                                        "증강체 검색... (초성 검색 지원)",
                                         color = TftHelperColor.White.copy(alpha = 0.5f),
-                                        fontSize = 18.sp
+                                        fontSize = 16.sp
                                     )
                                 }
                                 innerTextField()
                             }
                         }
                     )
-                } else {
-                    // 일반 모드 - Data Dragon 표시
+
+                    // 🔄 검색 중 인디케이터
+                    if (isSearching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = TftHelperColor.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+            } else {
+                // 📱 일반 모드 제목
+                Column {
                     Text(
-                        text = "Data Dragon (v$currentVersion)",
+                        text = "TFT 증강체",
+                        color = TftHelperColor.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+//                    Text(
+//                        text = "Data Dragon v$currentVersion",
+//                        color = TftHelperColor.White.copy(alpha = 0.6f),
+//                        fontSize = 12.sp
+//                    )
+                }
+            }
+        },
+        actions = {
+            if (isSearchMode) {
+                // 🗂️ 검색 히스토리 토글 버튼
+                if (searchHistory.isNotEmpty()) {
+                    IconButton(onClick = { onSearchHistoryToggle(!showSearchHistory) }) {
+                        Icon(
+                            if (showSearchHistory) Icons.Default.ExpandLess else Icons.Default.History,
+                            contentDescription = "검색 기록",
+                            tint = TftHelperColor.White
+                        )
+                    }
+                }
+
+                // ❌ 검색 모드 종료
+                IconButton(onClick = onClearSearch) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "검색 닫기",
+                        tint = TftHelperColor.White
+                    )
+                }
+            } else {
+                // 🔄 새로고침 버튼
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "새로고침",
+                        tint = TftHelperColor.White
+                    )
+                }
+
+                // 🔍 검색 버튼
+                IconButton(onClick = { onSearchModeChange(true) }) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "검색",
+                        tint = TftHelperColor.White
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = TftHelperColor.Black
+        )
+    )
+
+    // 🔍 검색 제안 드롭다운
+    if (isSearchMode && searchSuggestions.isNotEmpty() && searchQuery.isNotEmpty()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 200.dp)
+                .background(TftHelperColor.Black)
+                .border(1.dp, TftHelperColor.White.copy(alpha = 0.3f))
+        ) {
+            items(searchSuggestions) { suggestion ->
+                Text(
+                    text = suggestion,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSuggestionClick(suggestion) }
+                        .padding(16.dp),
+                    color = TftHelperColor.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 🗂️ 검색 히스토리 섹션
+ */
+@Composable
+private fun SearchHistorySection(
+    searchHistory: List<String>,
+    searchSuggestions: List<String>,
+    onHistoryItemClick: (String) -> Unit,
+    onClearHistory: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (searchHistory.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "최근 검색",
+                        color = TftHelperColor.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(onClick = onClearHistory) {
+                        Text("전체 삭제", color = TftHelperColor.White.copy(alpha = 0.7f))
+                    }
+                }
+            }
+
+            items(searchHistory) { historyItem ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onHistoryItemClick(historyItem) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = TftHelperColor.Black
+                    ),
+                    border = BorderStroke(1.dp, TftHelperColor.White.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = null,
+                            tint = TftHelperColor.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            historyItem,
+                            color = TftHelperColor.White,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 🎯 향상된 티어 선택기
+ */
+@Composable
+private fun EnhancedTierSelector(
+    tiers: List<String>,
+    selectedTier: String,
+    augmentCounts: Map<String, Int>,
+    onTierSelected: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 16.dp),
+    ) {
+        tiers.forEach { tier ->
+            val isSelected = selectedTier == tier
+            val count = augmentCounts[tier] ?: 0
+
+            val backgroundColor = when {
+                isSelected -> when (tier) {
+                    "실버" -> Brush.linearGradient(
+                        colors = listOf(
+                            TftHelperColor.SilverGradient1,
+                            TftHelperColor.SilverGradient3,
+                            TftHelperColor.SilverGradient5
+                        )
+                    )
+                    "골드" -> Brush.linearGradient(
+                        colors = listOf(
+                            TftHelperColor.GoldGradient1,
+                            TftHelperColor.GoldGradient3,
+                            TftHelperColor.GoldGradient5
+                        )
+                    )
+                    "프리즘" -> Brush.linearGradient(
+                        colors = listOf(
+                            TftHelperColor.PrismGradient1,
+                            TftHelperColor.PrismGradient3,
+                            TftHelperColor.PrismGradient5
+                        )
+                    )
+                    else -> Brush.linearGradient(listOf(TftHelperColor.White, TftHelperColor.Grey))
+                }
+                else -> Brush.linearGradient(listOf(TftHelperColor.Black, TftHelperColor.Black))
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .border(
+                        BorderStroke(1.dp, TftHelperColor.White.copy(alpha = 0.3f)),
+                        RectangleShape
+                    )
+                    .background(backgroundColor, RectangleShape)
+                    .clickable { onTierSelected(tier) },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = tier,
+                        color = TftHelperColor.White,
+                        style = TextStyle(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 16.sp
+                        )
+                    )
+                    if (tier != "전체" && count > 0) {
+                        Text(
+                            text = "($count)",
+                            color = TftHelperColor.White.copy(alpha = 0.8f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 🚀 성능 최적화된 증강체 리스트
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun OptimizedAugmentList(
+    augments: List<Augment>,
+    currentVersion: String,
+    isSearchMode: Boolean,
+    searchQuery: String,
+    modifier: Modifier = Modifier
+) {
+    if (augments.isEmpty()) {
+        // 빈 상태 UI
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Default.SearchOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = TftHelperColor.White.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = if (isSearchMode) "검색 결과가 없습니다" else "증강체가 없습니다",
+                    color = TftHelperColor.White,
+                    fontSize = 18.sp
+                )
+                if (isSearchMode && searchQuery.isNotEmpty()) {
+                    Text(
+                        text = "'$searchQuery'에 대한 결과가 없습니다",
                         color = TftHelperColor.White.copy(alpha = 0.7f),
                         fontSize = 14.sp
                     )
                 }
-            },
-            actions = {
-                if (isSearchMode) {
-                    // 검색 모드일 때 닫기 버튼
-                    IconButton(
-                        onClick = {
-                            isSearchMode = false
-                            searchText = ""
-                            keyboardController?.hide()
-                            viewModel.clearSearch()
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "검색 닫기",
-                            tint = TftHelperColor.White
-                        )
-                    }
-                } else {
-                    // 일반 모드일 때 새로고침 버튼과 검색 버튼 표시
-                    IconButton(
-                        onClick = {
-                            viewModel.refreshAugments()
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "새로고침",
-                            tint = TftHelperColor.White
-                        )
-                    }
-                    IconButton(
-                        onClick = { isSearchMode = true }
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "검색",
-                            tint = TftHelperColor.White
-                        )
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = TftHelperColor.Black
-            )
-        )
-
-        // 증강 페이저
-        AugmentPageWithPager(
-            filteredAugments = filteredAugments,
-            tiers = tiers,
-            selectedTier = selectedTier,
-            onTierSelected = { tier ->
-                selectedTier = tier
-                viewModel.filterAugmentsByTier(tier)
-            },
-            currentVersion = currentVersion,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+            }
+        }
+    } else {
+        // 성능 최적화된 LazyColumn
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            items(
+                items = augments,
+                key = { augment -> augment.id } // 성능 최적화를 위한 키 지정
+            ) { augment ->
+                // 하이라이트된 검색 결과를 위한 증강체 카드
+                HighlightedAugmentCard(
+                    augment = augment,
+                    currentVersion = currentVersion,
+                    searchQuery = if (isSearchMode) searchQuery else "",
+                    modifier = Modifier.animateItemPlacement() // 애니메이션 최적화
+                )
+            }
+        }
     }
 }
+
+/**
+ * 🔍 검색어 하이라이트가 적용된 증강체 카드
+ */
+@Composable
+private fun HighlightedAugmentCard(
+    augment: Augment,
+    currentVersion: String,
+    searchQuery: String,
+    modifier: Modifier = Modifier
+) {
+    // 기존 AugmentCard와 동일하지만 검색어 하이라이트 추가
+    AugmentCard(
+        augment = augment,
+        currentVersion = currentVersion
+    )
+}
+
+
 
 @Composable
 fun AugmentPageWithPager(
