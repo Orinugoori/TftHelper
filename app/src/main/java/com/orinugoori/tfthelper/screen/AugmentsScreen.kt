@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -76,7 +77,7 @@ fun AugmentPage(
     var isSearchMode by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
-    
+
     // 현재 버전 정보 가져오기
     val currentVersion = viewModel.getCurrentVersion()
 
@@ -157,7 +158,18 @@ fun AugmentPage(
                         )
                     }
                 } else {
-                    // 일반 모드일 때 검색 버튼만 표시
+                    // 일반 모드일 때 새로고침 버튼과 검색 버튼 표시
+                    IconButton(
+                        onClick = {
+                            viewModel.refreshAugments()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "새로고침",
+                            tint = TftHelperColor.White
+                        )
+                    }
                     IconButton(
                         onClick = { isSearchMode = true }
                     ) {
@@ -350,7 +362,7 @@ fun AugmentCard(
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    
+
                     // 티어 배지
                     val tierColor = when (augment.tier) {
                         "실버" -> TftHelperColor.SilverGradient3
@@ -358,7 +370,7 @@ fun AugmentCard(
                         "프리즘" -> TftHelperColor.PrismGradient3
                         else -> TftHelperColor.Grey
                     }
-                    
+
                     Text(
                         text = augment.tier,
                         style = TextStyle(

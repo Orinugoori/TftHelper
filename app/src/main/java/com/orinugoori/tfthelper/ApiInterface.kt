@@ -17,40 +17,38 @@ interface TFTApiService {
     suspend fun getVersions(): List<String>
 }
 
-// 기존 데이터 구조 유지 (호환성)
-data class AugmentResponse(
-    val data: Map<String, Augment>
-)
-
-data class Augment(
-    val id: String,
-    val tier: String = "",
-    val name: String,
-    val image: ImageInfo,
-    val description: String = ""
-)
-
-data class ImageInfo(
-    val full: String
-)
-
 /**
- * 이미지 파일명을 기반으로 증강체 티어를 추출하는 함수
- * TFT 증강체는 이미지 파일명 끝의 숫자로 티어를 구분함
+ * 더 간단하고 읽기 쉬운 버전의 이미지 파일명 기반 티어 추출 함수
+ * 로마숫자(I, II, III)와 아라비아숫자(1, 2, 3) 모두 지원
+ * TFT_Set13 같은 세트 정보는 무시하고 티어만 추출
  */
 fun extractTierFromImageName(imageName: String): String {
+    val cleanName = imageName.lowercase()
+
+    // TFT_Set 패턴을 제거하여 세트 번호 간섭 방지
+    val nameWithoutSet = cleanName.replace(Regex("tft_set\\d+"), "")
+
     return when {
-        // 파일명이 3으로 끝나면 프리즘
-        imageName.matches(Regex(".*3\\.(png|jpg|jpeg)$")) -> "프리즘"
-        // 파일명이 2로 끝나면 골드
-        imageName.matches(Regex(".*2\\.(png|jpg|jpeg)$")) -> "골드"
-        // 파일명이 1로 끝나거나 숫자가 없으면 실버
-        imageName.matches(Regex(".*1\\.(png|jpg|jpeg)$")) ||
-        !imageName.matches(Regex(".*[0-9]\\.(png|jpg|jpeg)$")) -> "실버"
-        // 기타 경우 실버로 기본 설정
+        // 프리즘: 3 또는 III (세트 번호가 아닌 순수 티어 번호만)
+        nameWithoutSet.contains("iii.") ||
+                nameWithoutSet.matches(Regex(".*[^\\d]3\\.(png|jpg|jpeg|webp)$")) ||
+                nameWithoutSet.matches(Regex(".*_3\\.(png|jpg|jpeg|webp)$")) -> "프리즘"
+
+        // 골드: 2 또는 II (세트 번호가 아닌 순수 티어 번호만)
+        nameWithoutSet.contains("ii.") ||
+                nameWithoutSet.matches(Regex(".*[^\\d]2\\.(png|jpg|jpeg|webp)$")) ||
+                nameWithoutSet.matches(Regex(".*_2\\.(png|jpg|jpeg|webp)$")) -> "골드"
+
+        // 실버: 1 또는 I (세트 번호가 아닌 순수 티어 번호만)
+        nameWithoutSet.contains("i.") ||
+                nameWithoutSet.matches(Regex(".*[^\\d]1\\.(png|jpg|jpeg|webp)$")) ||
+                nameWithoutSet.matches(Regex(".*_1\\.(png|jpg|jpeg|webp)$")) -> "실버"
+
+        // 기본값: 실버
         else -> "실버"
     }
 }
+
 
 /**
  * API 응답의 증강체 데이터를 처리하여 올바른 티어 정보를 추가
@@ -59,7 +57,7 @@ fun processAugmentData(response: AugmentResponse): List<Augment> {
     return response.data.values.map { augment ->
         val tier = extractTierFromImageName(augment.image.full)
         val cleanedDescription = cleanHtmlTags(augment.description)
-        
+
         augment.copy(
             tier = tier,
             description = cleanedDescription

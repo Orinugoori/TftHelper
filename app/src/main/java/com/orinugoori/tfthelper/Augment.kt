@@ -13,7 +13,7 @@ data class Augment(
     val name: String,
     val tier: String = "",
     val image: ImageInfo,
-    val description: String? = ""
+    val description: String
 )
 
 // 이미지 정보 클래스
