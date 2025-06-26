@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -87,6 +88,7 @@ fun AugmentPage(
     val searchHistory by viewModel.searchHistory.collectAsState()
     val searchSuggestions by viewModel.searchSuggestions.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val updateAvailable by viewModel.updateAvailable.collectAsState()
 
     var isSearchMode by remember { mutableStateOf(false) }
     var showSearchHistory by remember { mutableStateOf(false) }
@@ -111,7 +113,7 @@ fun AugmentPage(
             showSearchHistory = showSearchHistory,
             showRecommendations = showRecommendations,
             isSearching = isSearching,
-            // currentVersion은 AugmentCard로 직접 전달하지 않고, Augment 모델 자체에 포함되므로 여기서는 필요 없음
+            updateAvailable = updateAvailable,
             onSearchModeChange = {
                 isSearchMode = it
                 if (it) showRecommendations = true
@@ -209,6 +211,7 @@ private fun EnhancedSearchTopBar(
     showSearchHistory: Boolean,
     showRecommendations : Boolean,
     isSearching: Boolean,
+    updateAvailable: Boolean,
     onSearchModeChange: (Boolean) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchAction: (String) -> Unit, // 추가: 검색 액션 (엔터, 버튼 클릭)
@@ -299,6 +302,24 @@ private fun EnhancedSearchTopBar(
                     )
                 }
             } else {
+                if(updateAvailable){
+                    IconButton( onClick = onRefresh){
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Update, // 업데이트를 나타내는 아이콘 (예: 화살표 원형)
+                                contentDescription = "업데이트 가능",
+                                tint = TftHelperColor.Red // 눈에 띄는 빨간색으로 표시
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "NEW", // 'NEW' 텍스트
+                                color = TftHelperColor.Red,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
                 // 🔄 새로고침 버튼
                 IconButton(onClick = onRefresh) {
                     Icon(

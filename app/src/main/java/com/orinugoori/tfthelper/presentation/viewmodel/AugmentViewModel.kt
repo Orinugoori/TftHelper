@@ -5,17 +5,19 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.orinugoori.tfthelper.constants.AppConstants // AppConstants 임포트
-import com.orinugoori.tfthelper.data.local.SearchHistoryManager // SearchHistoryManager 임포트
-import com.orinugoori.tfthelper.data.model.Augment // Augment 모델 임포트 (확인)
-import com.orinugoori.tfthelper.repository.AugmentRepository // AugmentRepository 임포트 (확인)
-import com.orinugoori.tfthelper.repository.CacheInfo // CacheInfo 임포트 (확인)
+import com.orinugoori.tfthelper.constants.AppConstants
+import com.orinugoori.tfthelper.data.local.SearchHistoryManager
+import com.orinugoori.tfthelper.data.model.Augment
+import com.orinugoori.tfthelper.domain.usecases.FilterAugmentsUseCase
+import com.orinugoori.tfthelper.repository.AugmentRepository
+import com.orinugoori.tfthelper.repository.CacheInfo
 import com.orinugoori.tfthelper.util.cleanHtmlTags
 import com.orinugoori.tfthelper.util.generateSearchSuggestions
 import com.orinugoori.tfthelper.util.getInitialConsonants
 import com.orinugoori.tfthelper.util.isInitialConsonantMatch
 import com.orinugoori.tfthelper.util.normalizeAugmentName
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -30,8 +32,15 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     // 레포지토리 인스턴스
     private val augmentRepository = AugmentRepository(application.applicationContext)
 
+    //Usecase 인스턴스
+    private val filterAugmentsUseCase = FilterAugmentsUseCase()
+
     // SearchHistoryManager 인스턴스 추가
     private val searchHistoryManager = SearchHistoryManager(application)
+
+    //업데이트 관리
+    private val _updateAvailable = MutableStateFlow(false)
+    val updateAvailable: StateFlow<Boolean> = _updateAvailable.asStateFlow()
 
     // UI 상태 관리
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
@@ -66,6 +75,7 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
 
+
     /**
      * UI 상태 정의
      */
@@ -79,16 +89,19 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     init {
+
         loadAugments() // ViewModel 초기화 시 데이터 로드
         loadSearchHistory() // 검색 기록 로드
 
         // 검색어 변경 감지 및 필터링 (debounce를 통해 검색 부하 줄임)
         viewModelScope.launch {
+            _updateAvailable.value = checkForUpdates()
+
             _searchQuery
                 .debounce(AppConstants.SEARCH_DEBOUNCE_MILLIS) // 상수 사용
                 .map { query ->
                     // 필터링은 항상 _augments.value (원본 전체 목록)에 대해 수행
-                    filterAugments(query, _selectedTier.value, _augments.value)
+                    filterAugmentsUseCase(query, _selectedTier.value, _augments.value)
                 }
                 .collect { filteredList ->
                     _filteredAugments.value = filteredList
@@ -103,7 +116,7 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
         // 티어 필터 변경 감지 및 필터링
         viewModelScope.launch {
             _selectedTier
-                .map { tier -> filterAugments(_searchQuery.value, tier, _augments.value) }
+                .map { tier -> filterAugmentsUseCase(_searchQuery.value, tier, _augments.value) }
                 .collect { filteredList ->
                     _filteredAugments.value = filteredList
                 }
@@ -221,41 +234,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
         _filteredAugments.value = _augments.value
     }
 
-    /**
-     * 통합된 필터 적용 로직 (Flow의 map에서 호출됨)
-     */
-    private fun filterAugments(query: String, tier: String, augments: List<Augment>): List<Augment> {
-        val filteredByTier = if (tier == "전체") {
-            augments
-        } else {
-            augments.filter { it.tier == tier }
-        }
-
-        return if (query.isBlank()) {
-            filteredByTier
-        } else {
-            val normalizedQuery = normalizeAugmentName(query)
-            val initialConsonantsQuery = getInitialConsonants(normalizedQuery)
-
-            filteredByTier.filter { augment ->
-                val normalizedAugmentName = normalizeAugmentName(augment.name)
-                val cleanedDescription = cleanHtmlTags(augment.description) // 설명도 정리 후 검색
-
-                // 1. 일반 텍스트 포함 여부 (이름 또는 설명)
-                val nameContainsQuery = normalizedAugmentName.contains(normalizedQuery, ignoreCase = true)
-                val descContainsQuery = cleanedDescription.contains(normalizedQuery, ignoreCase = true)
-
-                // 2. 초성 검색 (이름 또는 설명의 초성이 쿼리의 초성을 포함하는지)
-                // IMPORTANT: isInitialConsonantMatch 함수에 '쿼리의 초성 문자열'을 전달합니다.
-                val nameInitialMatches = isInitialConsonantMatch(normalizedAugmentName, initialConsonantsQuery)
-                val descInitialMatches = isInitialConsonantMatch(cleanedDescription, initialConsonantsQuery)
-
-                // 이 네 가지 조건 중 하나라도 만족하면 포함됩니다.
-                nameContainsQuery || descContainsQuery || nameInitialMatches || descInitialMatches
-            }
-        }
-    }
-
 
     /**
      * 캐시 정보 가져오기
@@ -275,9 +253,12 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
      * 최신 버전 확인 및 업데이트 필요 여부 반환
      */
     suspend fun checkForUpdates(): Boolean {
-        // Community Dragon은 항상 최신 데이터를 제공하므로 이 함수는 사용되지 않음
-        // (API_MIGRATION.md에 따라 항상 false를 반환하도록 되어 있음)
-        return false
+        return try {
+            augmentRepository.checkForUpdates()
+        }catch (e: Exception){
+            Log.e("AugmentViewModel","업데이트 확인 실패", e)
+            false
+        }
     }
 
     /**
@@ -286,25 +267,6 @@ class AugmentViewModel(application: Application) : AndroidViewModel(application)
     fun getVersionInfo(): String {
         val cacheInfo = getCacheInfo()
         return "현재 버전: ${cacheInfo.version} (Community Dragon)"
-    }
-
-    /**
-     * 특정 증강 찾기
-     */
-    fun findAugmentById(id: String): Augment? {
-        return _augments.value.find { it.id == id }
-    }
-
-    /**
-     * 티어별 증강 개수 가져오기
-     */
-    fun getAugmentCountByTier(): Map<String, Int> {
-        val counts = mutableMapOf<String, Int>()
-        _augments.value.forEach { augment ->
-            val tier = augment.tier.ifEmpty { "기타" }
-            counts[tier] = (counts[tier] ?: 0) + 1
-        }
-        return counts
     }
 
 
