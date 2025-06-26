@@ -26,7 +26,7 @@
             tools:replace="android:resource" />
 
         <activity
-            android:name=".splashScreen.SplashActivity"
+            android:name=".presentation.screen.splash.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.TFThelper"
             >

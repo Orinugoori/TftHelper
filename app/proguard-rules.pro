@@ -33,9 +33,9 @@
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class com.google.gson.** { *; }
--keep class com.orinugoori.tfthelper.AugmentResponse { *; }
--keep class com.orinugoori.tfthelper.Augment { *; }
--keep class com.orinugoori.tfthelper.ImageInfo { *; }
+-keep class com.orinugoori.tfthelper.data.model.AugmentResponse { *; }
+-keep class com.orinugoori.tfthelper.data.model.Augment { *; }
+-keep class com.orinugoori.tfthelper.data.model.ImageInfo { *; }
 -keep class retrofit2.** { *; }
 -dontwarn retrofit2.**
 -keepclassmembers class * {
